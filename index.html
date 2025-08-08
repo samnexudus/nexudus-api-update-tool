@@ -1,0 +1,398 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nexudus Internal Update Tool</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600&family=Poppins:wght@400;600&display=swap');
+        
+        body { 
+            font-family: 'Poppins', sans-serif; 
+            padding: 20px; 
+            background-color: #f8f8f8; 
+        }
+        .container { 
+            max-width: 800px; 
+            margin: 0 auto; 
+            background-color: white; 
+            padding: 30px; 
+            border-radius: 12px; 
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1); 
+        }
+        h1, h3 { 
+            font-family: 'Playfair Display', serif;
+            font-weight: 600;
+            color: #FE4d00; 
+        }
+        h1 { font-size: 2rem; margin-bottom: 0.5rem; }
+        h3 { font-size: 1.25rem; margin-top: 2rem; margin-bottom: 0.75rem; }
+        p { color: #4b5563; line-height: 1.5; }
+        input[type="text"], input[type="password"], select {
+            width: 100%;
+            padding: 10px;
+            margin-top: 5px;
+            margin-bottom: 15px;
+            border: 1px solid #d1d5db;
+            border-radius: 8px;
+            box-sizing: border-box;
+            transition: all 0.2s ease;
+        }
+        input[type="text"]:focus, input[type="password"]:focus, select:focus {
+            outline: none;
+            border-color: #2126ca;
+            box-shadow: 0 0 0 3px rgba(33, 38, 202, 0.25);
+        }
+        input[type="file"] {
+            display: block;
+            margin-top: 10px;
+        }
+        button {
+            color: white;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 1rem;
+            font-weight: 600;
+            transition: background-color 0.2s ease;
+        }
+        #startButton {
+            background-color: #2126ca;
+        }
+        #startButton:hover {
+            background-color: #1a1e9c;
+        }
+        #downloadButton {
+            display: none; /* Initially hidden */
+            margin-top: 15px;
+            background-color: #FE4d00;
+        }
+        #downloadButton:hover {
+            background-color: #d13c00;
+        }
+        #stopButton {
+            display: none; /* Initially hidden */
+            margin-top: 15px;
+            background-color: #940a0a;
+            margin-left: 10px;
+        }
+        #stopButton:hover {
+            background-color: #7a0808;
+        }
+        #log {
+            background-color: #f9fafb;
+            border: 1px solid #e5e7eb;
+            border-radius: 8px;
+            padding: 15px;
+            height: 300px;
+            overflow-y: scroll;
+            margin-top: 20px;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            color: #374151;
+        }
+        .logo-container {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        .logo {
+            max-width: 250px;
+            height: auto;
+        }
+        .collapsible-content {
+            display: none;
+            padding: 15px;
+            border: 1px solid #e5e7eb;
+            border-radius: 8px;
+            background-color: #f9fafb;
+            margin-top: 10px;
+        }
+        #toggleGuideButton {
+            background-color: #4b5563;
+            color: white;
+        }
+        #toggleGuideButton:hover {
+            background-color: #374151;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <div class="logo-container">
+            <img src="https://nexudusacademy.spaces.nexudus.com//images/Logo.png?cache=2025-08-08T11:13:58+04:00" alt="Nexudus Logo" class="logo">
+        </div>
+        <h1>Nexudus Internal Update Tool</h1>
+        <p>This tool reads a CSV file, iterates through each row, and sends a custom API request. Failed updates will be logged and can be exported to a new file at the end.</p>
+
+        <!-- Guide Section -->
+        <button id="toggleGuideButton" onclick="toggleGuide()">Show Guide</button>
+        <div id="updateGuide" class="collapsible-content">
+            <h4>How to Use This Tool:</h4>
+            <ol>
+                <li>**Authentication:** Enter your Nexudus username and password in the first section. This will be used to generate a Basic Auth header for your API requests.</li>
+                <li>**API Configuration:** Provide the full API endpoint URL and select the correct HTTP method (`PUT` or `POST`).
+                    <ul>
+                        <li>For updates (PUT), the `Id` is typically expected in the JSON body.</li>
+                        <li>For creating new records (POST), the `Id` should be omitted from the CSV and the JSON body.</li>
+                    </ul>
+                </li>
+                <li>**Upload & Run:** Upload a CSV file that contains the data you want to update.
+                    <ul>
+                        <li>Your CSV must have a column named **`Id`** for the tool to correctly identify each record.</li>
+                        <li>All other columns in your CSV will be converted into a JSON payload for the API request.</li>
+                    </ul>
+                </li>
+                <li>**Monitor:** Click "Start Update" to begin. The log will show the status of each request. Use the "Stop Processing" button to halt the process at any time.</li>
+                <li>**Export Errors:** If any requests fail, a "Download Failed Records" button will appear, allowing you to export a CSV of the failed rows and their error messages for review.</li>
+            </ol>
+        </div>
+
+        <!-- Authentication Section -->
+        <h3>1. Authentication</h3>
+        <p>Enter your username and password for the Nexudus account you are creating or updating records for. This information is not stored.</p>
+        <div>
+            <label for="username" class="font-medium text-gray-700">Username:</label>
+            <input type="text" id="username">
+        </div>
+        <div>
+            <label for="password" class="font-medium text-gray-700">Password:</label>
+            <input type="password" id="password">
+        </div>
+
+        <!-- API Configuration Section -->
+        <h3>2. API Configuration</h3>
+        <p>Specify the API endpoint and the HTTP method to use for the requests.</p>
+        <div>
+            <label for="apiEndpoint" class="font-medium text-gray-700">API Endpoint URL:</label>
+            <input type="text" id="apiEndpoint" placeholder="e.g., https://spaces.nexudus.com/api/billing/coworkercontracts">
+        </div>
+        <div>
+            <label for="httpMethod" class="font-medium text-gray-700">HTTP Method:</label>
+            <select id="httpMethod">
+                <option value="PUT">PUT (Update Records)</option>
+                <option value="POST">POST (Create Records)</option>
+            </select>
+        </div>
+
+        <!-- File Upload and Action Section -->
+        <h3>3. Upload CSV & Run</h3>
+        <p>Upload the CSV file. The tool will use the 'Id' column to identify the record and all other columns to form the update payload.</p>
+        <input type="file" id="csvFile" accept=".csv">
+        <br><br>
+        <button id="startButton" onclick="startUpdate()">Start Update</button>
+        <button id="stopButton" onclick="stopProcessing()">Stop Processing</button>
+        <button id="downloadButton" onclick="downloadFailedRecords()">Download Failed Records</button>
+
+        <!-- Progress Log Section -->
+        <h3>4. Progress Log</h3>
+        <pre id="log"></pre>
+    </div>
+
+    <script>
+        // Array to store failed records
+        let failedRecords = [];
+        const requestDelay = 1100; // 1.1 seconds delay between requests to respect rate limits
+        let isProcessing = false;
+
+        function toggleGuide() {
+            const guide = document.getElementById('updateGuide');
+            const button = document.getElementById('toggleGuideButton');
+            if (guide.style.display === 'block') {
+                guide.style.display = 'none';
+                button.textContent = 'Show Guide';
+            } else {
+                guide.style.display = 'block';
+                button.textContent = 'Hide Guide';
+            }
+        }
+
+        function stopProcessing() {
+            isProcessing = false;
+            document.getElementById('log').textContent += '\nProcessing stopped by user.';
+            document.getElementById('startButton').disabled = false;
+            document.getElementById('stopButton').style.display = 'none';
+        }
+
+        async function startUpdate() {
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+            const apiEndpoint = document.getElementById('apiEndpoint').value;
+            const httpMethod = document.getElementById('httpMethod').value;
+            const csvFile = document.getElementById('csvFile').files[0];
+            const logElement = document.getElementById('log');
+            const downloadButton = document.getElementById('downloadButton');
+            const startButton = document.getElementById('startButton');
+            const stopButton = document.getElementById('stopButton');
+            
+            // Reset state for a new run
+            logElement.textContent = '';
+            failedRecords = [];
+            downloadButton.style.display = 'none';
+
+            if (!username || !password) {
+                logElement.textContent += 'Error: Please enter your username and password.\n';
+                return;
+            }
+
+            if (!apiEndpoint) {
+                logElement.textContent += 'Error: Please enter an API Endpoint URL.\n';
+                return;
+            }
+
+            if (!csvFile) {
+                logElement.textContent += 'Error: Please upload a CSV file.\n';
+                return;
+            }
+
+            logElement.textContent = 'Processing started...\n';
+            startButton.disabled = true;
+            stopButton.style.display = 'inline-block';
+            isProcessing = true;
+
+            const reader = new FileReader();
+
+            reader.onload = async function(event) {
+                const csvText = event.target.result;
+                const { headers, records } = parseCSV(csvText);
+
+                if (records.length === 0) {
+                    logElement.textContent += 'Error: CSV file is empty or could not be parsed.\n';
+                    return;
+                }
+
+                const authHeader = 'Basic ' + btoa(username + ':' + password);
+                
+                // Iterate through each record
+                for (const record of records) {
+                    // Check if the user has stopped the process
+                    if (!isProcessing) {
+                        break;
+                    }
+
+                    const recordId = record['Id'];
+                    if (!recordId) {
+                        const errorMsg = 'Missing the "Id" column.';
+                        logElement.textContent += `Error: Skipping a row because it's ${errorMsg}\n`;
+                        failedRecords.push({ ...record, ErrorMessage: errorMsg });
+                        continue;
+                    }
+
+                    const payload = createPayload(record);
+                    const fetchOptions = {
+                        method: httpMethod,
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': authHeader
+                        }
+                    };
+
+                    // Add body for POST and PUT requests
+                    if (httpMethod === 'POST' || httpMethod === 'PUT') {
+                        fetchOptions.body = JSON.stringify(payload);
+                    }
+                    
+                    try {
+                        const response = await fetch(apiEndpoint, fetchOptions);
+
+                        if (response.ok) {
+                            logElement.textContent += `Success: Record ID ${recordId} processed successfully with method ${httpMethod}.\n`;
+                        } else {
+                            const errorText = await response.text();
+                            logElement.textContent += `Error: Failed to process Record ID ${recordId} with method ${httpMethod}. Status: ${response.status}. Message: ${errorText}\n`;
+                            failedRecords.push({ ...record, ErrorMessage: errorText });
+                        }
+                    } catch (error) {
+                        const errorMsg = error.message || 'Network error.';
+                        logElement.textContent += `Error: Failed to send request for Record ID ${recordId}. Message: ${errorMsg}\n`;
+                        failedRecords.push({ ...record, ErrorMessage: errorMsg });
+                    }
+                    logElement.scrollTop = logElement.scrollHeight; // Auto-scroll
+
+                    // Add a delay to respect API rate limits
+                    await new Promise(resolve => setTimeout(resolve, requestDelay));
+                }
+
+                logElement.textContent += '\nProcessing complete!';
+                startButton.disabled = false;
+                stopButton.style.display = 'none';
+
+                // Display download button if there were any failures
+                if (failedRecords.length > 0) {
+                    downloadButton.style.display = 'block';
+                    logElement.textContent += `\n${failedRecords.length} record(s) failed to update. Click "Download Failed Records" to get the details.`;
+                }
+            };
+            reader.readAsText(csvFile);
+        }
+
+        // Parses CSV text into an array of objects
+        function parseCSV(csvText) {
+            const lines = csvText.split('\n').filter(line => line.trim() !== '');
+            if (lines.length < 2) return { headers: [], records: [] };
+
+            const headers = lines[0].split(',').map(header => header.trim());
+            const records = [];
+
+            for (let i = 1; i < lines.length; i++) {
+                const line = lines[i];
+                const values = line.split(',').map(value => value.trim());
+                const record = {};
+                for (let j = 0; j < headers.length; j++) {
+                    record[headers[j]] = values[j] || null;
+                }
+                records.push(record);
+            }
+            return { headers, records };
+        }
+
+        // Creates a JSON payload from a record object
+        function createPayload(record) {
+            const payload = {};
+            for (const key in record) {
+                // Now including the 'Id' field in the payload as requested
+                if (record[key] !== null && record[key] !== '') {
+                    const value = record[key];
+                    // Attempt to parse to correct data types
+                    if (!isNaN(value) && value.trim() !== '') {
+                        payload[key] = parseFloat(value);
+                    } else if (value.toLowerCase() === 'true' || value.toLowerCase() === 'false') {
+                        payload[key] = value.toLowerCase() === 'true';
+                    } else {
+                        payload[key] = value;
+                    }
+                }
+            }
+            return payload;
+        }
+
+        // Downloads the failed records as a new CSV file
+        function downloadFailedRecords() {
+            if (failedRecords.length === 0) return;
+
+            const allHeaders = Object.keys(failedRecords[0]);
+            const csvRows = [allHeaders.join(',')];
+
+            for (const record of failedRecords) {
+                const row = allHeaders.map(header => {
+                    const value = record[header] || '';
+                    return `"${String(value).replace(/"/g, '""')}"`; // Handle commas and quotes
+                });
+                csvRows.push(row.join(','));
+            }
+
+            const csvString = csvRows.join('\n');
+            const blob = new Blob([csvString], { type: 'text/csv' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'failed_api_updates.csv';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+    </script>
+</body>
+</html>
