@@ -171,7 +171,7 @@
 
         <!-- API Configuration Section -->
         <h3>2. API Configuration</h3>
-        <p>Specify the API endpoint and the HTTP method to use for the requests.</p>
+        <p>Specify the API endpoint and the HTTP method to use for the requests. For PUT requests, the tool will automatically detect array fields from a sample record.</p>
         <div>
             <label for="apiEndpoint" class="font-medium text-gray-700">API Endpoint URL:</label>
             <input type="text" id="apiEndpoint" placeholder="e.g., https://spaces.nexudus.com/api/billing/coworkercontracts">
@@ -183,7 +183,9 @@
                 <option value="POST">POST (Create Records)</option>
             </select>
         </div>
-
+        
+        <!-- The user no longer needs to manually define array fields -->
+        
         <!-- File Upload and Action Section -->
         <h3>3. Upload CSV & Run</h3>
         <p>Upload the CSV file. The tool will use the 'Id' column to identify the record and all other columns to form the update payload.</p>
@@ -203,6 +205,7 @@
         let failedRecords = [];
         const requestDelay = 1100; // 1.1 seconds delay between requests to respect rate limits
         let isProcessing = false;
+        let arrayFields = []; // Dynamically discovered array fields
 
         function toggleGuide() {
             const guide = document.getElementById('updateGuide');
@@ -223,6 +226,36 @@
             document.getElementById('stopButton').style.display = 'none';
         }
 
+        // Fetches a single record from the API by ID and discovers array fields
+        async function getRecordDataAndDiscoverArrays(endpoint, id, authHeader) {
+            try {
+                // The GET endpoint needs the ID in the URL
+                const getEndpoint = `${endpoint}/${id}`;
+                const response = await fetch(getEndpoint, {
+                    method: 'GET',
+                    headers: {
+                        'Authorization': authHeader
+                    }
+                });
+                if (response.ok) {
+                    const record = await response.json();
+                    
+                    // Discover and store array fields
+                    for (const key in record) {
+                        if (Array.isArray(record[key])) {
+                            arrayFields.push(key);
+                        }
+                    }
+
+                    return record;
+                } else {
+                    return null;
+                }
+            } catch (error) {
+                return null;
+            }
+        }
+
         async function startUpdate() {
             const username = document.getElementById('username').value;
             const password = document.getElementById('password').value;
@@ -238,6 +271,7 @@
             logElement.textContent = '';
             failedRecords = [];
             downloadButton.style.display = 'none';
+            arrayFields = []; // Reset discovered array fields
 
             if (!username || !password) {
                 logElement.textContent += 'Error: Please enter your username and password.\n';
@@ -271,6 +305,17 @@
                 }
 
                 const authHeader = 'Basic ' + btoa(username + ':' + password);
+                
+                // Discover array fields from the first record if doing a PUT request
+                if (httpMethod === 'PUT' && records[0] && records[0]['Id']) {
+                    logElement.textContent += `Performing initial GET request to discover array fields...\n`;
+                    await getRecordDataAndDiscoverArrays(apiEndpoint, records[0]['Id'], authHeader);
+                    if (arrayFields.length > 0) {
+                        logElement.textContent += `Discovered array fields: ${arrayFields.join(', ')}\n`;
+                    } else {
+                         logElement.textContent += `No array fields discovered in the sample record.\n`;
+                    }
+                }
                 
                 // Iterate through each record
                 for (const record of records) {
@@ -403,6 +448,7 @@
         // Creates a JSON payload from a record object
         function createPayload(record, method) {
             const payload = {};
+            // The `arrayFields` list is now a global variable populated by the initial GET request
             for (const key in record) {
                 // For POST requests, we don't include the 'Id' column
                 if (method === 'POST' && key === 'Id') {
@@ -411,8 +457,11 @@
 
                 if (record[key] !== null && record[key] !== '') {
                     const value = record[key];
-                    // Attempt to parse to correct data types
-                    if (!isNaN(value) && value.trim() !== '') {
+                    
+                    if (arrayFields.includes(key)) {
+                        // Check for semicolons and split into an array if found
+                        payload[key] = value.includes(';') ? value.split(';') : [value];
+                    } else if (!isNaN(value) && value.trim() !== '') {
                         payload[key] = parseFloat(value);
                     } else if (value.toLowerCase() === 'true' || value.toLowerCase() === 'false') {
                         payload[key] = value.toLowerCase() === 'true';
