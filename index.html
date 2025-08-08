@@ -272,14 +272,14 @@
                     }
 
                     const recordId = record['Id'];
-                    if (!recordId) {
-                        const errorMsg = 'Missing the "Id" column.';
+                    if (!recordId && httpMethod === 'PUT') {
+                        const errorMsg = 'Missing the "Id" column required for a PUT request.';
                         logElement.textContent += `Error: Skipping a row because it's ${errorMsg}\n`;
                         failedRecords.push({ ...record, ErrorMessage: errorMsg });
                         continue;
                     }
 
-                    const payload = createPayload(record);
+                    const payload = createPayload(record, httpMethod);
                     const fetchOptions = {
                         method: httpMethod,
                         headers: {
@@ -297,15 +297,15 @@
                         const response = await fetch(apiEndpoint, fetchOptions);
 
                         if (response.ok) {
-                            logElement.textContent += `Success: Record ID ${recordId} processed successfully with method ${httpMethod}.\n`;
+                            logElement.textContent += `Success: Record ID ${recordId || 'new record'} processed successfully with method ${httpMethod}.\n`;
                         } else {
                             const errorText = await response.text();
-                            logElement.textContent += `Error: Failed to process Record ID ${recordId} with method ${httpMethod}. Status: ${response.status}. Message: ${errorText}\n`;
+                            logElement.textContent += `Error: Failed to process Record ID ${recordId || 'new record'} with method ${httpMethod}. Status: ${response.status}. Message: ${errorText}\n`;
                             failedRecords.push({ ...record, ErrorMessage: errorText });
                         }
                     } catch (error) {
                         const errorMsg = error.message || 'Network error.';
-                        logElement.textContent += `Error: Failed to send request for Record ID ${recordId}. Message: ${errorMsg}\n`;
+                        logElement.textContent += `Error: Failed to send request for Record ID ${recordId || 'new record'}. Message: ${errorMsg}\n`;
                         failedRecords.push({ ...record, ErrorMessage: errorMsg });
                     }
                     logElement.scrollTop = logElement.scrollHeight; // Auto-scroll
@@ -348,10 +348,14 @@
         }
 
         // Creates a JSON payload from a record object
-        function createPayload(record) {
+        function createPayload(record, method) {
             const payload = {};
             for (const key in record) {
-                // Now including the 'Id' field in the payload as requested
+                // For POST requests, we don't include the 'Id' column
+                if (method === 'POST' && key === 'Id') {
+                    continue;
+                }
+
                 if (record[key] !== null && record[key] !== '') {
                     const value = record[key];
                     // Attempt to parse to correct data types
@@ -396,3 +400,4 @@
     </script>
 </body>
 </html>
+
