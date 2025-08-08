@@ -142,13 +142,13 @@
                 <li>**Authentication:** Enter your Nexudus username and password in the first section. This will be used to generate a Basic Auth header for your API requests.</li>
                 <li>**API Configuration:** Provide the full API endpoint URL and select the correct HTTP method (`PUT` or `POST`).
                     <ul>
-                        <li>For updates (PUT), the `Id` is typically expected in the JSON body.</li>
-                        <li>For creating new records (POST), the `Id` should be omitted from the CSV and the JSON body.</li>
+                        <li>For updates (PUT), the tool will first fetch the existing record and then merge your changes with it to prevent data loss. The 'Id' column in your CSV is still required for this.</li>
+                        <li>For creating new records (POST), the `Id` column should be omitted from your CSV as the API will assign a new ID.</li>
                     </ul>
                 </li>
                 <li>**Upload & Run:** Upload a CSV file that contains the data you want to update.
                     <ul>
-                        <li>Your CSV must have a column named **`Id`** for the tool to correctly identify each record.</li>
+                        <li>Your CSV must have a column named **`Id`** for the tool to correctly identify each record for PUT requests.</li>
                         <li>All other columns in your CSV will be converted into a JSON payload for the API request.</li>
                     </ul>
                 </li>
@@ -287,19 +287,38 @@
                         continue;
                     }
 
-                    const payload = createPayload(record, httpMethod);
+                    let payload = {};
+
+                    if (httpMethod === 'PUT') {
+                        // For PUT, first GET the existing record
+                        logElement.textContent += `Fetching existing record for ID ${recordId}...\n`;
+                        const existingRecord = await getRecordData(apiEndpoint, recordId, authHeader);
+                        if (!existingRecord) {
+                            const errorMsg = `Could not fetch existing record for ID ${recordId}.`;
+                            logElement.textContent += `Error: ${errorMsg}\n`;
+                            failedRecords.push({ ...record, ErrorMessage: errorMsg });
+                            continue;
+                        }
+                        
+                        // Merge the existing record with the new data from the CSV
+                        payload = mergePayloads(existingRecord, createPayload(record, httpMethod));
+                    } else if (httpMethod === 'POST') {
+                        // For POST, just create the payload from the CSV
+                        payload = createPayload(record, httpMethod);
+                    } else {
+                        // Should not happen with current options, but good practice
+                        logElement.textContent += `Error: Invalid HTTP method ${httpMethod}.\n`;
+                        continue;
+                    }
+
                     const fetchOptions = {
                         method: httpMethod,
                         headers: {
                             'Content-Type': 'application/json',
                             'Authorization': authHeader
-                        }
+                        },
+                        body: JSON.stringify(payload)
                     };
-
-                    // Add body for POST and PUT requests
-                    if (httpMethod === 'POST' || httpMethod === 'PUT') {
-                        fetchOptions.body = JSON.stringify(payload);
-                    }
                     
                     try {
                         const response = await fetch(apiEndpoint, fetchOptions);
@@ -333,6 +352,32 @@
                 }
             };
             reader.readAsText(csvFile);
+        }
+
+        // Fetches a single record from the API by ID
+        async function getRecordData(endpoint, id, authHeader) {
+            try {
+                // The GET endpoint needs the ID in the URL
+                const getEndpoint = `${endpoint}/${id}`;
+                const response = await fetch(getEndpoint, {
+                    method: 'GET',
+                    headers: {
+                        'Authorization': authHeader
+                    }
+                });
+                if (response.ok) {
+                    return await response.json();
+                } else {
+                    return null;
+                }
+            } catch (error) {
+                return null;
+            }
+        }
+
+        // Merges a base object with a partial update object
+        function mergePayloads(basePayload, updatePayload) {
+            return { ...basePayload, ...updatePayload };
         }
 
         // Parses CSV text into an array of objects
