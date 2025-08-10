@@ -23,7 +23,7 @@
         h1, h3 { 
             font-family: 'Playfair Display', serif;
             font-weight: 600;
-            color: #FE4d00; 
+            color: #001279; 
         }
         h1 { font-size: 2rem; margin-bottom: 0.5rem; }
         h3 { font-size: 1.25rem; margin-top: 2rem; margin-bottom: 0.75rem; }
@@ -46,8 +46,8 @@
         }
         input[type="text"]:focus, input[type="password"]:focus, select:focus {
             outline: none;
-            border-color: #2126ca;
-            box-shadow: 0 0 0 3px rgba(33, 38, 202, 0.25);
+            border-color: #001279;
+            box-shadow: 0 0 0 3px #16289B;
         }
         input[type="file"] {
             display: block;
@@ -64,27 +64,26 @@
             transition: background-color 0.2s ease;
         }
         #startButton {
-            background-color: #2126ca;
+            background-color: #FF5100;
         }
         #startButton:hover {
-            background-color: #1a1e9c;
+            background-color: #BF3700;
         }
         #downloadButton {
             display: none; /* Initially hidden */
             margin-top: 15px;
-            background-color: #FE4d00;
+            background-color: #001279;
         }
         #downloadButton:hover {
-            background-color: #d13c00;
+            background-color: #16289B;
         }
         #stopButton {
-            display: none; /* Initially hidden */
-            margin-top: 15px;
-            background-color: #940a0a;
+            display: none;
             margin-left: 10px;
+            background-color: #BF3700;
         }
         #stopButton:hover {
-            background-color: #7a0808;
+            background-color: #FF5100;
         }
         #log {
             background-color: #f9fafb;
@@ -98,6 +97,9 @@
             word-wrap: break-word;
             color: #374151;
         }
+        .log-success { color: #10b981; }
+        .log-error { color: #940a0a; }
+        .log-info { color: #001279; }
         .logo-container {
             text-align: center;
             margin-bottom: 20px;
@@ -120,6 +122,38 @@
         }
         #toggleGuideButton:hover {
             background-color: #374151;
+        }
+        #customEndpointInput {
+            display: none;
+        }
+        .endpoint-text {
+            color: #6b7280;
+            font-size: 0.875rem;
+        }
+        .light-text {
+            color: #a0a0a0;
+        }
+        #progressBarContainer {
+            width: 100%;
+            background-color: #e5e7eb;
+            border-radius: 8px;
+            margin-top: 10px;
+            overflow: hidden;
+            height: 20px;
+        }
+        #progressBar {
+            height: 100%;
+            width: 0;
+            background-color: #FF5100;
+            transition: width 0.3s ease;
+            text-align: center;
+            color: white;
+            line-height: 20px;
+        }
+        .status-message {
+            margin-top: 10px;
+            font-size: 0.9rem;
+            color: #4b5563;
         }
     </style>
 </head>
@@ -152,7 +186,7 @@
                         <li>All other columns in your CSV will be converted into a JSON payload for the API request.</li>
                     </ul>
                 </li>
-                <li>**Monitor:** Click "Start Update" to begin. The log will show the status of each request. Use the "Stop Processing" button to halt the process at any time.</li>
+                <li>**Monitor:** Click "Start Update" to begin. For **PUT** requests, the tool will process only the first record and pause, prompting you to verify the update in your dashboard before continuing with the batch. Use the "Stop Processing" button to halt the process at any time.</li>
                 <li>**Export Errors:** If any requests fail, a "Download Failed Records" button will appear, allowing you to export a CSV of the failed rows and their error messages for review.</li>
             </ol>
         </div>
@@ -173,18 +207,47 @@
         <h3>2. API Configuration</h3>
         <p>Specify the API endpoint and the HTTP method to use for the requests. For PUT requests, the tool will automatically detect array fields from a sample record.</p>
         <div>
-            <label for="apiEndpoint" class="font-medium text-gray-700">API Endpoint URL:</label>
-            <input type="text" id="apiEndpoint" placeholder="e.g., https://spaces.nexudus.com/api/billing/coworkercontracts">
+            <label for="recordType" class="font-medium text-gray-700">Record Type:</label>
+            <select id="recordType" onchange="handleRecordTypeChange()">
+                <option value="">-- Select a record type --</option>
+                <option value="https://spaces.nexudus.com/api/spaces/bookings">Bookings</option>
+                <option value="https://spaces.nexudus.com/api/spaces/bookingproducts">Booking Products</option>
+                <option value="https://spaces.nexudus.com/api/spaces/bookingvisitors">Booking Visitors</option>
+                <option value="https://spaces.nexudus.com/api/billing/contractcontacts">Contract Contact - Virtual Offices</option>
+                <option value="https://spaces.nexudus.com/api/billing/contractdeposits">Contract Deposit</option>
+                <option value="https://spaces.nexudus.com/api/billing/contractproducts">Contract Products</option>
+                <option value="https://spaces.nexudus.com/api/billing/contractschedules">Contract Schedules</option>
+                <option value="https://spaces.nexudus.com/api/billing/coworkercontracts">Contracts</option>
+                <option value="https://spaces.nexudus.com/api/billing/coworkerdiscountcodes">Customer Discount Code</option>
+                <option value="https://spaces.nexudus.com/api/spaces/coworkerdatafiles">Customer Documents</option>
+                <option value="https://spaces.nexudus.com/api/spaces/coworkernotes">Customer Note</option>
+                <option value="https://spaces.nexudus.com/api/billing/coworkerproducts">Customer Product Sale</option>
+                <option value="https://spaces.nexudus.com/api/spaces/coworkers">Customers</option>
+                <option value="https://spaces.nexudus.com/api/spaces/coworkerdeliveries">Deliveries</option>
+                <option value="https://spaces.nexudus.com/api/content/calendarevents">Events</option>
+                <option value="https://spaces.nexudus.com/api/sys/floorplandesks">Floor Plan Desk/Office</option>
+                <option value="https://spaces.nexudus.com/api/crm/cannedresponses">Message Macros</option>
+                <option value="https://spaces.nexudus.com/api/billing/timepasses">Pass</option>
+                <option value="https://spaces.nexudus.com/api/billing/tariffs">Plan</option>
+                <option value="https://spaces.nexudus.com/api/billing/products">Product</option>
+                <option value="https://spaces.nexudus.com/api/spaces/resources">Resource</option>
+                <option value="custom">None of these? Enter a custom API endpoint URL</option>
+            </select>
+        </div>
+        <div id="customEndpointInput" style="display: none;">
+            <label for="apiEndpoint" class="font-medium text-gray-700">Custom API Endpoint URL:</label>
+            <input type="text" id="apiEndpoint" placeholder="e.g., https://spaces.nexudus.com/api/custom">
+        </div>
+        <div id="selectedEndpointDisplay">
+            <span class="endpoint-text">Selected Endpoint: </span><span class="endpoint-text" id="selectedEndpointValue"></span>
         </div>
         <div>
             <label for="httpMethod" class="font-medium text-gray-700">HTTP Method:</label>
             <select id="httpMethod">
-                <option value="PUT">PUT (Update Records)</option>
-                <option value="POST">POST (Create Records)</option>
+                <option value="PUT">Update Records <span class="light-text">(PUT)</span></option>
+                <option value="POST">Create Records <span class="light-text">(POST)</span></option>
             </select>
         </div>
-        
-        <!-- The user no longer needs to manually define array fields -->
         
         <!-- File Upload and Action Section -->
         <h3>3. Upload CSV & Run</h3>
@@ -197,15 +260,57 @@
 
         <!-- Progress Log Section -->
         <h3>4. Progress Log</h3>
+        <div id="progressBarContainer">
+            <div id="progressBar"></div>
+        </div>
+        <p class="status-message" id="progressStatus">Ready to begin.</p>
         <pre id="log"></pre>
     </div>
 
     <script>
         // Array to store failed records
         let failedRecords = [];
+        let allRecords = [];
         const requestDelay = 1100; // 1.1 seconds delay between requests to respect rate limits
         let isProcessing = false;
         let arrayFields = []; // Dynamically discovered array fields
+        let currentEndpoint = '';
+        let processedCount = 0;
+        let authHeader = '';
+
+        // Helper functions
+        function log(message, type = 'info') {
+            const logElement = document.getElementById('log');
+            const logEntry = document.createElement('span');
+            logEntry.textContent = `${new Date().toLocaleTimeString()} - ${message}\n`;
+            
+            if (type === 'success') {
+                logEntry.className = 'log-success';
+            } else if (type === 'error') {
+                logEntry.className = 'log-error';
+            } else {
+                logEntry.className = 'log-info';
+            }
+            
+            logElement.appendChild(logEntry);
+            logElement.scrollTop = logElement.scrollHeight;
+        }
+
+        function handleRecordTypeChange() {
+            const selectElement = document.getElementById('recordType');
+            const customInputDiv = document.getElementById('customEndpointInput');
+            const selectedEndpointValueSpan = document.getElementById('selectedEndpointValue');
+            
+            if (selectElement.value === 'custom') {
+                customInputDiv.style.display = 'block';
+                currentEndpoint = '';
+                selectedEndpointValueSpan.textContent = 'Custom';
+            } else {
+                customInputDiv.style.display = 'none';
+                currentEndpoint = selectElement.value;
+                selectedEndpointValueSpan.textContent = currentEndpoint;
+            }
+        }
 
         function toggleGuide() {
             const guide = document.getElementById('updateGuide');
@@ -221,194 +326,27 @@
 
         function stopProcessing() {
             isProcessing = false;
-            document.getElementById('log').textContent += '\nProcessing stopped by user.';
+            log('Processing stopped by user.');
             document.getElementById('startButton').disabled = false;
             document.getElementById('stopButton').style.display = 'none';
+            document.getElementById('proceedButton').style.display = 'none';
+            document.getElementById('cancelButton').style.display = 'none';
         }
 
-        // Fetches a single record from the API by ID and discovers array fields
-        async function getRecordDataAndDiscoverArrays(endpoint, id, authHeader) {
-            try {
-                // The GET endpoint needs the ID in the URL
-                const getEndpoint = `${endpoint}/${id}`;
-                const response = await fetch(getEndpoint, {
-                    method: 'GET',
-                    headers: {
-                        'Authorization': authHeader
-                    }
-                });
-                if (response.ok) {
-                    const record = await response.json();
-                    
-                    // Discover and store array fields
-                    for (const key in record) {
-                        if (Array.isArray(record[key])) {
-                            arrayFields.push(key);
-                        }
-                    }
-
-                    return record;
-                } else {
-                    return null;
-                }
-            } catch (error) {
-                return null;
-            }
+        function updateProgressBar(count, total) {
+            const progressBar = document.getElementById('progressBar');
+            const progressStatus = document.getElementById('progressStatus');
+            const percentage = (count / total) * 100;
+            progressBar.style.width = `${percentage}%`;
+            progressStatus.textContent = `Progress: ${count} of ${total} records processed.`;
         }
-
-        async function startUpdate() {
-            const username = document.getElementById('username').value;
-            const password = document.getElementById('password').value;
-            const apiEndpoint = document.getElementById('apiEndpoint').value;
-            const httpMethod = document.getElementById('httpMethod').value;
-            const csvFile = document.getElementById('csvFile').files[0];
-            const logElement = document.getElementById('log');
-            const downloadButton = document.getElementById('downloadButton');
-            const startButton = document.getElementById('startButton');
-            const stopButton = document.getElementById('stopButton');
-            
-            // Reset state for a new run
-            logElement.textContent = '';
-            failedRecords = [];
-            downloadButton.style.display = 'none';
-            arrayFields = []; // Reset discovered array fields
-
-            if (!username || !password) {
-                logElement.textContent += 'Error: Please enter your username and password.\n';
-                return;
-            }
-
-            if (!apiEndpoint) {
-                logElement.textContent += 'Error: Please enter an API Endpoint URL.\n';
-                return;
-            }
-
-            if (!csvFile) {
-                logElement.textContent += 'Error: Please upload a CSV file.\n';
-                return;
-            }
-
-            logElement.textContent = 'Processing started...\n';
-            startButton.disabled = true;
-            stopButton.style.display = 'inline-block';
-            isProcessing = true;
-
-            const reader = new FileReader();
-
-            reader.onload = async function(event) {
-                const csvText = event.target.result;
-                const { headers, records } = parseCSV(csvText);
-
-                if (records.length === 0) {
-                    logElement.textContent += 'Error: CSV file is empty or could not be parsed.\n';
-                    return;
-                }
-
-                const authHeader = 'Basic ' + btoa(username + ':' + password);
-                
-                // Discover array fields from the first record if doing a PUT request
-                if (httpMethod === 'PUT' && records[0] && records[0]['Id']) {
-                    logElement.textContent += `Performing initial GET request to discover array fields...\n`;
-                    await getRecordDataAndDiscoverArrays(apiEndpoint, records[0]['Id'], authHeader);
-                    if (arrayFields.length > 0) {
-                        logElement.textContent += `Discovered array fields: ${arrayFields.join(', ')}\n`;
-                    } else {
-                         logElement.textContent += `No array fields discovered in the sample record.\n`;
-                    }
-                }
-                
-                // Iterate through each record
-                for (const record of records) {
-                    // Check if the user has stopped the process
-                    if (!isProcessing) {
-                        break;
-                    }
-
-                    const recordId = record['Id'];
-                    if (!recordId && httpMethod === 'PUT') {
-                        const errorMsg = 'Missing the "Id" column required for a PUT request.';
-                        logElement.textContent += `Error: Skipping a row because it's ${errorMsg}\n`;
-                        failedRecords.push({ ...record, ErrorMessage: errorMsg });
-                        continue;
-                    }
-
-                    let payload = {};
-
-                    if (httpMethod === 'PUT') {
-                        // For PUT, first GET the existing record
-                        logElement.textContent += `Fetching existing record for ID ${recordId}...\n`;
-                        const existingRecord = await getRecordData(apiEndpoint, recordId, authHeader);
-                        if (!existingRecord) {
-                            const errorMsg = `Could not fetch existing record for ID ${recordId}.`;
-                            logElement.textContent += `Error: ${errorMsg}\n`;
-                            failedRecords.push({ ...record, ErrorMessage: errorMsg });
-                            continue;
-                        }
-                        
-                        // Merge the existing record with the new data from the CSV
-                        payload = mergePayloads(existingRecord, createPayload(record, httpMethod));
-                    } else if (httpMethod === 'POST') {
-                        // For POST, just create the payload from the CSV
-                        payload = createPayload(record, httpMethod);
-                    } else {
-                        // Should not happen with current options, but good practice
-                        logElement.textContent += `Error: Invalid HTTP method ${httpMethod}.\n`;
-                        continue;
-                    }
-
-                    const fetchOptions = {
-                        method: httpMethod,
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'Authorization': authHeader
-                        },
-                        body: JSON.stringify(payload)
-                    };
-                    
-                    try {
-                        const response = await fetch(apiEndpoint, fetchOptions);
-
-                        if (response.ok) {
-                            logElement.textContent += `Success: Record ID ${recordId || 'new record'} processed successfully with method ${httpMethod}.\n`;
-                        } else {
-                            const errorText = await response.text();
-                            logElement.textContent += `Error: Failed to process Record ID ${recordId || 'new record'} with method ${httpMethod}. Status: ${response.status}. Message: ${errorText}\n`;
-                            failedRecords.push({ ...record, ErrorMessage: errorText });
-                        }
-                    } catch (error) {
-                        const errorMsg = error.message || 'Network error.';
-                        logElement.textContent += `Error: Failed to send request for Record ID ${recordId || 'new record'}. Message: ${errorMsg}\n`;
-                        failedRecords.push({ ...record, ErrorMessage: errorMsg });
-                    }
-                    logElement.scrollTop = logElement.scrollHeight; // Auto-scroll
-
-                    // Add a delay to respect API rate limits
-                    await new Promise(resolve => setTimeout(resolve, requestDelay));
-                }
-
-                logElement.textContent += '\nProcessing complete!';
-                startButton.disabled = false;
-                stopButton.style.display = 'none';
-
-                // Display download button if there were any failures
-                if (failedRecords.length > 0) {
-                    downloadButton.style.display = 'block';
-                    logElement.textContent += `\n${failedRecords.length} record(s) failed to update. Click "Download Failed Records" to get the details.`;
-                }
-            };
-            reader.readAsText(csvFile);
-        }
-
-        // Fetches a single record from the API by ID
+        
         async function getRecordData(endpoint, id, authHeader) {
             try {
-                // The GET endpoint needs the ID in the URL
                 const getEndpoint = `${endpoint}/${id}`;
                 const response = await fetch(getEndpoint, {
                     method: 'GET',
-                    headers: {
-                        'Authorization': authHeader
-                    }
+                    headers: { 'Authorization': authHeader }
                 });
                 if (response.ok) {
                     return await response.json();
@@ -420,19 +358,39 @@
             }
         }
 
-        // Merges a base object with a partial update object
+        async function getRecordDataAndDiscoverArrays(endpoint, id, authHeader) {
+            try {
+                const getEndpoint = `${endpoint}/${id}`;
+                const response = await fetch(getEndpoint, {
+                    method: 'GET',
+                    headers: { 'Authorization': authHeader }
+                });
+                if (response.ok) {
+                    const record = await response.json();
+                    
+                    for (const key in record) {
+                        if (Array.isArray(record[key])) {
+                            arrayFields.push(key);
+                        }
+                    }
+                    return record;
+                } else {
+                    return null;
+                }
+            } catch (error) {
+                return null;
+            }
+        }
+
         function mergePayloads(basePayload, updatePayload) {
             return { ...basePayload, ...updatePayload };
         }
 
-        // Parses CSV text into an array of objects
         function parseCSV(csvText) {
             const lines = csvText.split('\n').filter(line => line.trim() !== '');
             if (lines.length < 2) return { headers: [], records: [] };
-
             const headers = lines[0].split(',').map(header => header.trim());
             const records = [];
-
             for (let i = 1; i < lines.length; i++) {
                 const line = lines[i];
                 const values = line.split(',').map(value => value.trim());
@@ -445,21 +403,13 @@
             return { headers, records };
         }
 
-        // Creates a JSON payload from a record object
         function createPayload(record, method) {
             const payload = {};
-            // The `arrayFields` list is now a global variable populated by the initial GET request
             for (const key in record) {
-                // For POST requests, we don't include the 'Id' column
-                if (method === 'POST' && key === 'Id') {
-                    continue;
-                }
-
+                if (method === 'POST' && key === 'Id') continue;
                 if (record[key] !== null && record[key] !== '') {
                     const value = record[key];
-                    
                     if (arrayFields.includes(key)) {
-                        // Check for semicolons and split into an array if found
                         payload[key] = value.includes(';') ? value.split(';') : [value];
                     } else if (!isNaN(value) && value.trim() !== '') {
                         payload[key] = parseFloat(value);
@@ -473,21 +423,17 @@
             return payload;
         }
 
-        // Downloads the failed records as a new CSV file
         function downloadFailedRecords() {
             if (failedRecords.length === 0) return;
-
             const allHeaders = Object.keys(failedRecords[0]);
             const csvRows = [allHeaders.join(',')];
-
             for (const record of failedRecords) {
                 const row = allHeaders.map(header => {
                     const value = record[header] || '';
-                    return `"${String(value).replace(/"/g, '""')}"`; // Handle commas and quotes
+                    return `"${String(value).replace(/"/g, '""')}"`;
                 });
                 csvRows.push(row.join(','));
             }
-
             const csvString = csvRows.join('\n');
             const blob = new Blob([csvString], { type: 'text/csv' });
             const url = URL.createObjectURL(blob);
@@ -498,6 +444,141 @@
             a.click();
             document.body.removeChild(a);
             URL.revokeObjectURL(url);
+        }
+
+        // The main functions
+        async function startUpdate() {
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+            const recordTypeSelect = document.getElementById('recordType');
+            const csvFile = document.getElementById('csvFile').files[0];
+            const startButton = document.getElementById('startButton');
+            const stopButton = document.getElementById('stopButton');
+            
+            const apiEndpoint = recordTypeSelect.value === 'custom' ? document.getElementById('apiEndpoint').value : recordTypeSelect.value;
+            const httpMethod = document.getElementById('httpMethod').value;
+            
+            if (!username || !password) {
+                log('Error: Please enter your username and password.', 'error');
+                return;
+            }
+            if (!apiEndpoint) {
+                log('Error: Please enter an API Endpoint URL.', 'error');
+                return;
+            }
+            if (!csvFile) {
+                log('Error: Please upload a CSV file.', 'error');
+                return;
+            }
+
+            log('Processing started...', 'info');
+            startButton.disabled = true;
+            stopButton.style.display = 'inline-block';
+            isProcessing = true;
+            authHeader = 'Basic ' + btoa(username + ':' + password);
+            processedCount = 0; // Reset progress counter
+
+            const reader = new FileReader();
+            reader.onload = async function(event) {
+                const csvText = event.target.result;
+                const { records } = parseCSV(csvText);
+                allRecords = records;
+                
+                if (allRecords.length === 0) {
+                    log('Error: CSV file is empty or could not be parsed.', 'error');
+                    stopProcessing();
+                    return;
+                }
+
+                if (httpMethod === 'PUT') {
+                    // For PUT requests, discover array fields first and then proceed with the batch
+                    const recordToDiscover = allRecords[0];
+                    if (recordToDiscover && recordToDiscover['Id']) {
+                        log(`Performing initial GET request to discover array fields on ID ${recordToDiscover['Id']}...`, 'info');
+                        await getRecordDataAndDiscoverArrays(apiEndpoint, recordToDiscover['Id'], authHeader);
+                        if (arrayFields.length > 0) {
+                            log(`Discovered array fields: ${arrayFields.join(', ')}`, 'info');
+                        } else {
+                            log('No array fields discovered in the sample record.', 'info');
+                        }
+                    }
+                }
+                
+                log(`Starting batch process for ${allRecords.length} records.`, 'info');
+                await processRecords(allRecords);
+                endProcessing();
+            };
+            reader.readAsText(csvFile);
+        }
+
+        async function processRecords(recordsToProcess) {
+            const apiEndpoint = document.getElementById('recordType').value === 'custom' ? document.getElementById('apiEndpoint').value : document.getElementById('recordType').value;
+            const httpMethod = document.getElementById('httpMethod').value;
+            const totalRecords = allRecords.length;
+
+            for (const record of recordsToProcess) {
+                if (!isProcessing) break;
+                
+                const recordId = record['Id'];
+                let payload = {};
+
+                if (httpMethod === 'PUT') {
+                    log(`Fetching existing record for ID ${recordId}...`, 'info');
+                    const existingRecord = await getRecordData(apiEndpoint, recordId, authHeader);
+                    if (!existingRecord) {
+                        const errorMsg = `Could not fetch existing record for ID ${recordId}.`;
+                        log(`Error: ${errorMsg}`, 'error');
+                        failedRecords.push({ ...record, ErrorMessage: errorMsg });
+                        continue;
+                    }
+                    payload = mergePayloads(existingRecord, createPayload(record, httpMethod));
+                } else if (httpMethod === 'POST') {
+                    payload = createPayload(record, httpMethod);
+                }
+                
+                const fetchOptions = {
+                    method: httpMethod,
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': authHeader
+                    },
+                    body: JSON.stringify(payload)
+                };
+
+                try {
+                    const response = await fetch(apiEndpoint, fetchOptions);
+                    if (response.ok) {
+                        log(`Success: Record ID ${recordId || 'new record'} processed successfully with method ${httpMethod}.`, 'success');
+                    } else {
+                        const errorText = await response.text();
+                        log(`Error: Failed to process Record ID ${recordId || 'new record'} with method ${httpMethod}. Status: ${response.status}. Message: ${errorText}`, 'error');
+                        failedRecords.push({ ...record, ErrorMessage: errorText });
+                    }
+                } catch (error) {
+                    const errorMsg = error.message || 'Network error.';
+                    log(`Error: Failed to send request for Record ID ${recordId || 'new record'}. Message: ${errorMsg}`, 'error');
+                    failedRecords.push({ ...record, ErrorMessage: errorMsg });
+                }
+                
+                processedCount++;
+                updateProgressBar(processedCount, totalRecords);
+
+                if (isProcessing) {
+                    await new Promise(resolve => setTimeout(resolve, requestDelay));
+                }
+            }
+        }
+
+        function endProcessing() {
+            log('Processing complete!', 'info');
+            isProcessing = false;
+            document.getElementById('startButton').disabled = false;
+            document.getElementById('stopButton').style.display = 'none';
+
+            if (failedRecords.length > 0) {
+                document.getElementById('downloadButton').style.display = 'block';
+                log(`\n${failedRecords.length} record(s) failed to update. Click "Download Failed Records" to get the details.`, 'error');
+            }
         }
     </script>
 </body>
