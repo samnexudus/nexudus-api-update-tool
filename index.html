@@ -173,23 +173,23 @@
         <button id="toggleGuideButton" onclick="toggleGuide()">Show Guide</button>
         <div id="updateGuide" class="collapsible-content">
             <h4>How to Use This Tool:</h4>
+            <p>This tool can currently be used for Updating and Creating records.</p>
+            <br>
+            <h5>Update:</h5>
             <ol>
-                <li>**Authentication:** Enter your Nexudus username and password in the first section. This will be used to generate a Basic Auth header for your API requests.</li>
-                <li>**API Configuration:** Provide the full API endpoint URL and select the correct HTTP method (`PUT` or `POST`).
+                <li><b>Export the existing records:</b> From the Nexudus Admin Panel, export the current records. This file is crucial because it contains the <b>`Id`</b> field, which tells the tool exactly which records to update.</li>
+                <li><b>Prepare your file:</b> Clean the export file by removing any columns you will not be updating. You only need to keep the `Id` and the columns with the new data.</li>
+                <li><b>Add updated data:</b> Add the column headers for the fields you want to change. For example, if you need to update the `BillingDay` for a list of Contracts, your CSV should include a `BillingDay` column. You can find all possible column headers in the Nexudus API documentation at `developers.nexudus.com`.</li>
+                <li><b>Format data correctly:</b>
                     <ul>
-                        <li>For updates (PUT), the tool will first fetch the existing record and then merge your changes with it to prevent data loss. The 'Id' column in your CSV is still required for this.</li>
-                        <li>For creating new records (POST), the `Id` column should be omitted from your CSV as the API will assign a new ID.</li>
+                        <li><b>Lists of items</b> will be correctly processed as a JSON array, but only if they are separated by a <b>semicolon (;)</b>. Do not use a comma to separate lists! For example, `Desks: Desk1;Desk2`.</li>
+                        <li><b>Dates</b> should be formatted in UTC as `yyyy-mm-dd hh:mm`. The tool will handle the conversion to the correct API format.</li>
                     </ul>
                 </li>
-                <li>**Upload & Run:** Upload a CSV file that contains the data you want to update.
-                    <ul>
-                        <li>Your CSV must have a column named **`Id`** for the tool to correctly identify each record for PUT requests.</li>
-                        <li>All other columns in your CSV will be converted into a JSON payload for the API request.</li>
-                    </ul>
-                </li>
-                <li>**Monitor:** Click "Start Update" to begin. For **PUT** requests, the tool will process only the first record and pause, prompting you to verify the update in your dashboard before continuing with the batch. Use the "Stop Processing" button to halt the process at any time.</li>
-                <li>**Export Errors:** If any requests fail, a "Download Failed Records" button will appear, allowing you to export a CSV of the failed rows and their error messages for review.</li>
             </ol>
+            <br>
+            <h5>Create:</h5>
+            <p>The process for creating new records is the same as above, but you <b>do not need to include the `Id`</b> in your CSV. Ensure all other required fields are completed.</p>
         </div>
 
         <!-- Authentication Section -->
@@ -278,6 +278,11 @@
         let currentEndpoint = '';
         let processedCount = 0;
         let authHeader = '';
+        // List of fields that are expected to be dates
+        const dateFields = [
+            'StartDate', 'RenewalDate', 'InvoicedPeriod', 'CancellationDate', 
+            'PricePlanTermsAcceptedOn', 'UpdatedOn', 'CreatedOn'
+        ];
 
         // Helper functions
         function log(message, type = 'info') {
@@ -330,8 +335,6 @@
             log('Processing stopped by user.');
             document.getElementById('startButton').disabled = false;
             document.getElementById('stopButton').style.display = 'none';
-            document.getElementById('proceedButton').style.display = 'none';
-            document.getElementById('cancelButton').style.display = 'none';
         }
 
         function updateProgressBar(count, total) {
@@ -410,7 +413,10 @@
                 if (method === 'POST' && key === 'Id') continue;
                 if (record[key] !== null && record[key] !== '') {
                     const value = record[key];
-                    if (arrayFields.includes(key)) {
+
+                    if (dateFields.includes(key)) {
+                        payload[key] = convertToIsoDate(value);
+                    } else if (arrayFields.includes(key)) {
                         payload[key] = value.includes(';') ? value.split(';') : [value];
                     } else if (!isNaN(value) && value.trim() !== '') {
                         payload[key] = parseFloat(value);
@@ -422,6 +428,19 @@
                 }
             }
             return payload;
+        }
+        
+        // Helper function to convert human-readable date format to ISO 8601
+        function convertToIsoDate(dateString) {
+            // Check for a simple YYYY-MM-DD or YYYY-MM-DD HH:mm format
+            const match = dateString.match(/^(\d{4}-\d{2}-\d{2})(?: (\d{2}:\d{2}))?$/);
+            if (match) {
+                const datePart = match[1];
+                const timePart = match[2] || '00:00';
+                return `${datePart}T${timePart}:00Z`;
+            }
+            // If the format is already ISO 8601 or another valid format, return it as-is
+            return dateString;
         }
 
         function downloadFailedRecords() {
