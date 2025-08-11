@@ -35,7 +35,7 @@
             font-style: italic;
             margin-bottom: 20px;
         }
-        input[type="text"], input[type="password"], select {
+        input[type="text"], input[type="password"] {
             width: 100%;
             padding: 10px;
             margin-top: 5px;
@@ -45,7 +45,7 @@
             box-sizing: border-box;
             transition: all 0.2s ease;
         }
-        input[type="text"]:focus, input[type="password"]:focus, select:focus {
+        input[type="text"]:focus, input[type="password"]:focus {
             outline: none;
             border-color: #001279;
             box-shadow: 0 0 0 3px #16289B;
@@ -156,6 +156,26 @@
             font-size: 0.9rem;
             color: #4b5563;
         }
+        .input-group {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .input-group select {
+            flex-grow: 1;
+            margin-bottom: 0;
+        }
+        .input-group button {
+            white-space: nowrap;
+            padding: 10px 15px;
+            margin-top: 0;
+        }
+        #getTemplateButton {
+            background-color: #001279;
+        }
+        #getTemplateButton:hover {
+            background-color: #16289B;
+        }
     </style>
 </head>
 <body>
@@ -207,7 +227,7 @@
         <!-- API Configuration Section -->
         <h3>2. API Configuration</h3>
         <p>Specify the API endpoint and the HTTP method to use for the requests. For PUT requests, the tool will automatically detect array fields from a sample record.</p>
-        <div>
+        <div class="input-group">
             <label for="recordType" class="font-medium text-gray-700">Record Type:</label>
             <select id="recordType" onchange="handleRecordTypeChange()">
                 <option value="">-- Select a record type --</option>
@@ -234,10 +254,11 @@
                 <option value="https://spaces.nexudus.com/api/spaces/resources">Resource</option>
                 <option value="custom">None of these? Enter a custom API endpoint URL</option>
             </select>
+            <button id="getTemplateButton" onclick="getTemplate()" disabled>Get CSV Template</button>
         </div>
         <div id="customEndpointInput" style="display: none;">
             <label for="apiEndpoint" class="font-medium text-gray-700">Custom API Endpoint URL:</label>
-            <input type="text" id="apiEndpoint" placeholder="e.g., https://spaces.nexudus.com/api/custom">
+            <input type="text" id="apiEndpoint" placeholder="e.g., https://spaces.nexudus.com/api/custom" onchange="handleCustomEndpointChange()">
         </div>
         <div id="selectedEndpointDisplay">
             <span class="endpoint-text">Selected Endpoint: </span><span class="endpoint-text" id="selectedEndpointValue"></span>
@@ -306,17 +327,36 @@
             const selectElement = document.getElementById('recordType');
             const customInputDiv = document.getElementById('customEndpointInput');
             const selectedEndpointValueSpan = document.getElementById('selectedEndpointValue');
+            const getTemplateButton = document.getElementById('getTemplateButton');
             
             if (selectElement.value === 'custom') {
                 customInputDiv.style.display = 'block';
                 currentEndpoint = '';
                 selectedEndpointValueSpan.textContent = 'Custom';
+                getTemplateButton.disabled = !document.getElementById('apiEndpoint').value;
+            } else if (selectElement.value === '') {
+                customInputDiv.style.display = 'none';
+                currentEndpoint = '';
+                selectedEndpointValueSpan.textContent = '';
+                getTemplateButton.disabled = true;
             } else {
                 customInputDiv.style.display = 'none';
                 currentEndpoint = selectElement.value;
                 selectedEndpointValueSpan.textContent = currentEndpoint;
+                getTemplateButton.disabled = false;
             }
         }
+        
+        function handleCustomEndpointChange() {
+            const customEndpointInput = document.getElementById('apiEndpoint');
+            const getTemplateButton = document.getElementById('getTemplateButton');
+            const selectedEndpointValueSpan = document.getElementById('selectedEndpointValue');
+
+            currentEndpoint = customEndpointInput.value;
+            selectedEndpointValueSpan.textContent = currentEndpoint || 'Custom';
+            getTemplateButton.disabled = !customEndpointInput.value;
+        }
+
 
         function toggleGuide() {
             const guide = document.getElementById('updateGuide');
@@ -332,9 +372,10 @@
 
         function stopProcessing() {
             isProcessing = false;
-            log('Processing stopped by user.');
+            log('Processing stopped by user.', 'error');
             document.getElementById('startButton').disabled = false;
             document.getElementById('stopButton').style.display = 'none';
+            document.getElementById('getTemplateButton').disabled = false;
         }
 
         function updateProgressBar(count, total) {
@@ -406,6 +447,16 @@
             }
             return { headers, records };
         }
+        
+        function convertToIsoDate(dateString) {
+            const match = dateString.match(/^(\d{4}-\d{2}-\d{2})(?: (\d{2}:\d{2}))?$/);
+            if (match) {
+                const datePart = match[1];
+                const timePart = match[2] || '00:00';
+                return `${datePart}T${timePart}:00Z`;
+            }
+            return dateString;
+        }
 
         function createPayload(record, method) {
             const payload = {};
@@ -428,19 +479,6 @@
                 }
             }
             return payload;
-        }
-        
-        // Helper function to convert human-readable date format to ISO 8601
-        function convertToIsoDate(dateString) {
-            // Check for a simple YYYY-MM-DD or YYYY-MM-DD HH:mm format
-            const match = dateString.match(/^(\d{4}-\d{2}-\d{2})(?: (\d{2}:\d{2}))?$/);
-            if (match) {
-                const datePart = match[1];
-                const timePart = match[2] || '00:00';
-                return `${datePart}T${timePart}:00Z`;
-            }
-            // If the format is already ISO 8601 or another valid format, return it as-is
-            return dateString;
         }
 
         function downloadFailedRecords() {
@@ -466,7 +504,99 @@
             URL.revokeObjectURL(url);
         }
 
-        // The main functions
+        async function getTemplate() {
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+            const recordTypeSelect = document.getElementById('recordType');
+            const startButton = document.getElementById('startButton');
+            const stopButton = document.getElementById('stopButton');
+            const templateButton = document.getElementById('getTemplateButton');
+            
+            const apiEndpoint = recordTypeSelect.value === 'custom' ? document.getElementById('apiEndpoint').value : recordTypeSelect.value;
+            
+            if (!username || !password) {
+                log('Error: Please enter your username and password.', 'error');
+                return;
+            }
+            if (!apiEndpoint) {
+                log('Error: Please enter an API Endpoint URL.', 'error');
+                return;
+            }
+
+            log('Fetching records to create a CSV template...', 'info');
+            templateButton.disabled = true;
+            startButton.disabled = true;
+            stopButton.style.display = 'inline-block';
+
+            const authHeader = 'Basic ' + btoa(username + ':' + password);
+            
+            try {
+                const response = await fetch(`${apiEndpoint}?pageSize=10`, {
+                    method: 'GET',
+                    headers: { 'Authorization': authHeader }
+                });
+
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    log(`Error: Failed to fetch records. Status: ${response.status}. Message: ${errorText}`, 'error');
+                    return;
+                }
+
+                let records = await response.json();
+                
+                // Check if the response is an object with a 'Records' property, which is common
+                if (records.Records) {
+                    records = records.Records;
+                }
+                
+                if (!Array.isArray(records) || records.length === 0) {
+                    log('No records found to create a template.', 'error');
+                    return;
+                }
+                
+                // Collect all unique headers from all records
+                const allHeaders = new Set();
+                records.forEach(record => {
+                    Object.keys(record).forEach(key => allHeaders.add(key));
+                });
+
+                const headerRow = Array.from(allHeaders).join(',');
+                
+                // Create data rows
+                const csvRows = [headerRow];
+                records.forEach(record => {
+                    const row = Array.from(allHeaders).map(header => {
+                        const value = record[header] || '';
+                        // Escape quotes and handle commas in values
+                        return `"${String(value).replace(/"/g, '""')}"`;
+                    });
+                    csvRows.push(row.join(','));
+                });
+                
+                const csvString = csvRows.join('\n');
+
+                const blob = new Blob([csvString], { type: 'text/csv' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'nexudus_template.csv';
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+
+                log('CSV template created and downloaded successfully!', 'success');
+
+            } catch (error) {
+                const errorMsg = error.message || 'Network error.';
+                log(`Error: Failed to fetch records. Message: ${errorMsg}`, 'error');
+            } finally {
+                templateButton.disabled = false;
+                startButton.disabled = false;
+                stopButton.style.display = 'none';
+            }
+        }
+
         async function startUpdate() {
             const username = document.getElementById('username').value;
             const password = document.getElementById('password').value;
@@ -474,6 +604,7 @@
             const csvFile = document.getElementById('csvFile').files[0];
             const startButton = document.getElementById('startButton');
             const stopButton = document.getElementById('stopButton');
+            const templateButton = document.getElementById('getTemplateButton');
             
             const apiEndpoint = recordTypeSelect.value === 'custom' ? document.getElementById('apiEndpoint').value : recordTypeSelect.value;
             const httpMethod = document.getElementById('httpMethod').value;
@@ -493,6 +624,7 @@
 
             log('Processing started...', 'info');
             startButton.disabled = true;
+            templateButton.disabled = true;
             stopButton.style.display = 'inline-block';
             isProcessing = true;
             authHeader = 'Basic ' + btoa(username + ':' + password);
@@ -506,12 +638,11 @@
                 
                 if (allRecords.length === 0) {
                     log('Error: CSV file is empty or could not be parsed.', 'error');
-                    stopProcessing();
+                    endProcessing();
                     return;
                 }
 
                 if (httpMethod === 'PUT') {
-                    // For PUT requests, discover array fields first and then proceed with the batch
                     const recordToDiscover = allRecords[0];
                     if (recordToDiscover && recordToDiscover['Id']) {
                         log(`Performing initial GET request to discover array fields on ID ${recordToDiscover['Id']}...`, 'info');
@@ -594,6 +725,7 @@
             isProcessing = false;
             document.getElementById('startButton').disabled = false;
             document.getElementById('stopButton').style.display = 'none';
+            document.getElementById('getTemplateButton').disabled = false;
 
             if (failedRecords.length > 0) {
                 document.getElementById('downloadButton').style.display = 'block';
