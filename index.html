@@ -452,6 +452,8 @@
                 }
                 const businessData = await businessResponse.json();
                 
+                log(`Full Business API response for Location ID ${locationId}:\n${JSON.stringify(businessData, null, 2)}`, 'info');
+                
                 const simpleTimeZoneId = businessData.SimpleTimeZoneId;
                 
                 if (!simpleTimeZoneId) {
@@ -683,7 +685,7 @@
                 let businessTimeZoneId;
                 if (businessTimeZoneCache[record.LocationId]) {
                     businessTimeZoneId = businessTimeZoneCache[record.LocationId];
-                    log(`Using cached timezone: ${businessTimeZoneId} for Location ID: ${record.LocationId}`, 'info');
+                    log(`Using cached timezone for Location ID ${record.LocationId}`, 'info');
                 } else {
                     businessTimeZoneId = await getBusinessTimeZoneByLocation(record.LocationId);
                     if (!businessTimeZoneId) {
@@ -699,8 +701,10 @@
                     const { DateTime } = luxon;
                     const format = 'yyyy-MM-dd HH:mm';
                     
+                    log(`    -> DEBUG: Original date string: "${dateString}"`, 'info');
+                    
                     if (DateTime.fromISO(dateString).isValid) {
-                        log(`  - Date string "${dateString}" is already in ISO format. No conversion needed.`, 'info');
+                        log(`    -> DEBUG: Date string is already in ISO format. No conversion needed.`, 'info');
                         return dateString;
                     }
 
@@ -708,11 +712,11 @@
                     
                     if (localDateTime.isValid) {
                         const utcDateTime = localDateTime.toUTC().toISO({ includeOffset: false, suppressMilliseconds: true });
-                        log(`  - Converting Local Time: "${dateString}" (Location Timezone: ${businessTimeZoneId}) -> UTC: "${utcDateTime}"`, 'info');
+                        log(`    -> DEBUG: Converting Local Time: "${localDateTime.toFormat(format)}", (Timezone: ${businessTimeZoneId}) to UTC: "${utcDateTime}"`, 'info');
                         return utcDateTime;
                     }
                     
-                    log(`  - Warning: Failed to convert date string "${dateString}". Sending original value.`, 'error');
+                    log(`    -> DEBUG: Warning: Failed to convert date string "${dateString}". Sending original value.`, 'error');
                     return dateString;
                 };
 
