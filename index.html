@@ -5,6 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Nexudus Internal Update Tool</title>
     <link rel="icon" href="https://nexudusacademy.spaces.nexudus.com//images/Favicon.jpg">
+    <!-- Luxon library for timezone handling -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/luxon/3.4.4/luxon.min.js"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600&family=Poppins:wght@400;600&display=swap');
         
@@ -44,6 +46,7 @@
             border-radius: 8px;
             box-sizing: border-box;
             transition: all 0.2s ease;
+            height: 40px; /* Consistent height */
         }
         input[type="text"]:focus, input[type="password"]:focus {
             outline: none;
@@ -56,13 +59,25 @@
         }
         button {
             color: white;
-            padding: 12px 24px;
+            padding: 8px 15px;
             border: none;
             border-radius: 8px;
             cursor: pointer;
             font-size: 1rem;
             font-weight: 600;
             transition: background-color 0.2s ease;
+            height: 40px; /* Consistent height */
+            box-sizing: border-box;
+        }
+        select {
+            height: 40px; /* Consistent height */
+            padding: 8px 10px;
+            margin-top: 5px;
+            margin-bottom: 15px;
+            border: 1px solid #d1d5db;
+            border-radius: 8px;
+            box-sizing: border-box;
+            width: 100%;
         }
         #startButton {
             background-color: #FF5100;
@@ -71,7 +86,7 @@
             background-color: #BF3700;
         }
         #downloadButton {
-            display: none; /* Initially hidden */
+            display: none;
             margin-top: 15px;
             background-color: #001279;
         }
@@ -85,6 +100,14 @@
         }
         #stopButton:hover {
             background-color: #FF5100;
+        }
+        #proceedButton {
+            display: none;
+            margin-left: 10px;
+            background-color: #001279;
+        }
+        #proceedButton:hover {
+            background-color: #16289B;
         }
         #log {
             background-color: #f9fafb;
@@ -120,6 +143,8 @@
         #toggleGuideButton {
             background-color: #4b5563;
             color: white;
+            height: 40px;
+            padding: 8px 15px;
         }
         #toggleGuideButton:hover {
             background-color: #374151;
@@ -134,47 +159,34 @@
         .light-text {
             color: #a0a0a0;
         }
-        #progressBarContainer {
-            width: 100%;
-            background-color: #e5e7eb;
-            border-radius: 8px;
-            margin-top: 10px;
-            overflow: hidden;
-            height: 20px;
-        }
-        #progressBar {
-            height: 100%;
-            width: 0;
-            background-color: #FF5100;
-            transition: width 0.3s ease;
-            text-align: center;
-            color: white;
-            line-height: 20px;
-        }
-        .status-message {
-            margin-top: 10px;
-            font-size: 0.9rem;
-            color: #4b5563;
-        }
         .input-group {
             display: flex;
             align-items: center;
             gap: 10px;
+            margin-bottom: 15px;
         }
         .input-group select {
             flex-grow: 1;
             margin-bottom: 0;
+            width: auto;
+            min-width: 0;
         }
         .input-group button {
             white-space: nowrap;
             padding: 10px 15px;
             margin-top: 0;
+            flex-shrink: 0;
         }
         #getTemplateButton {
             background-color: #001279;
         }
         #getTemplateButton:hover {
             background-color: #16289B;
+        }
+        .form-group-inline {
+            display: flex;
+            align-items: center;
+            gap: 10px;
         }
     </style>
 </head>
@@ -209,7 +221,7 @@
             </ol>
             <br>
             <h5>Create:</h5>
-            <p>The process for creating new records is the same as above, but you <b>do not need to include the `Id`</b> in your CSV. Ensure all other required fields are completed.</p>
+            <p>The process for creating new records is the same as above, but you <b>do not need to include the `Id`</b> in your CSV. Ensure all other fields are completed.</p>
         </div>
 
         <!-- Authentication Section -->
@@ -217,11 +229,11 @@
         <p>Enter your username and password for the Nexudus account you are creating or updating records for. This information is not stored.</p>
         <div>
             <label for="username" class="font-medium text-gray-700">Username:</label>
-            <input type="text" id="username">
+            <input type="text" id="username" oninput="checkFormValidity()">
         </div>
         <div>
             <label for="password" class="font-medium text-gray-700">Password:</label>
-            <input type="password" id="password">
+            <input type="password" id="password" oninput="checkFormValidity()">
         </div>
 
         <!-- API Configuration Section -->
@@ -246,12 +258,10 @@
                 <option value="https://spaces.nexudus.com/api/spaces/coworkers">Customers</option>
                 <option value="https://spaces.nexudus.com/api/spaces/coworkerdeliveries">Deliveries</option>
                 <option value="https://spaces.nexudus.com/api/content/calendarevents">Events</option>
-                <option value="https://spaces.nexudus.com/api/sys/floorplandesks">Floor Plan Desk/Office</option>
                 <option value="https://spaces.nexudus.com/api/crm/cannedresponses">Message Macros</option>
                 <option value="https://spaces.nexudus.com/api/billing/timepasses">Pass</option>
                 <option value="https://spaces.nexudus.com/api/billing/tariffs">Plan</option>
                 <option value="https://spaces.nexudus.com/api/billing/products">Product</option>
-                <option value="https://spaces.nexudus.com/api/spaces/resources">Resource</option>
                 <option value="custom">None of these? Enter a custom API endpoint URL</option>
             </select>
             <button id="getTemplateButton" onclick="getTemplate()" disabled>Get CSV Template</button>
@@ -263,7 +273,7 @@
         <div id="selectedEndpointDisplay">
             <span class="endpoint-text">Selected Endpoint: </span><span class="endpoint-text" id="selectedEndpointValue"></span>
         </div>
-        <div>
+        <div class="form-group-inline">
             <label for="httpMethod" class="font-medium text-gray-700">HTTP Method:</label>
             <select id="httpMethod">
                 <option value="PUT">Update Records <span class="light-text">(PUT)</span></option>
@@ -276,8 +286,9 @@
         <p>Upload the CSV file. The tool will use the 'Id' column to identify the record and all other columns to form the update payload.</p>
         <input type="file" id="csvFile" accept=".csv">
         <br><br>
-        <button id="startButton" onclick="startUpdate()">Start Update</button>
-        <button id="stopButton" onclick="stopProcessing()">Stop Processing</button>
+        <button id="startButton" onclick="startUpdate()" disabled>Start Update</button>
+        <button id="proceedButton" style="display: none;">Proceed</button>
+        <button id="stopButton" onclick="stopProcessing()" style="display: none;">Stop Processing</button>
         <button id="downloadButton" onclick="downloadFailedRecords()">Download Failed Records</button>
 
         <!-- Progress Log Section -->
@@ -296,9 +307,11 @@
         const requestDelay = 1100; // 1.1 seconds delay between requests to respect rate limits
         let isProcessing = false;
         let arrayFields = []; // Dynamically discovered array fields
-        let currentEndpoint = '';
         let processedCount = 0;
         let authHeader = '';
+        let proceedResolver = null;
+        let businessTimeZoneCache = {}; // Cache for timezone data
+
         // List of fields that are expected to be dates
         const dateFields = [
             'StartDate', 'RenewalDate', 'InvoicedPeriod', 'CancellationDate', 
@@ -308,82 +321,169 @@
         // Helper functions
         function log(message, type = 'info') {
             const logElement = document.getElementById('log');
-            const logEntry = document.createElement('span');
-            logEntry.textContent = `${new Date().toLocaleTimeString()} - ${message}\n`;
-            
-            if (type === 'success') {
-                logEntry.className = 'log-success';
-            } else if (type === 'error') {
-                logEntry.className = 'log-error';
-            } else {
-                logEntry.className = 'log-info';
+            if (logElement) {
+                const logEntry = document.createElement('span');
+                logEntry.textContent = `${new Date().toLocaleTimeString()} - ${message}\n`;
+                
+                if (type === 'success') {
+                    logEntry.className = 'log-success';
+                } else if (type === 'error') {
+                    logEntry.className = 'log-error';
+                } else {
+                    logEntry.className = 'log-info';
+                }
+                
+                logElement.appendChild(logEntry);
+                logElement.scrollTop = logElement.scrollHeight;
             }
+        }
+        
+        function checkFormValidity() {
+            const usernameInput = document.getElementById('username');
+            const passwordInput = document.getElementById('password');
+            const recordTypeSelect = document.getElementById('recordType');
+            const customEndpointInput = document.getElementById('apiEndpoint');
+            const getTemplateButton = document.getElementById('getTemplateButton');
+            const startButton = document.getElementById('startButton');
+
+            const isEndpointSelected = recordTypeSelect.value !== '' && recordTypeSelect.value !== 'custom';
+            const isCustomEndpointEntered = recordTypeSelect.value === 'custom' && customEndpointInput.value !== '';
+            const isAuthProvided = usernameInput.value !== '' && passwordInput.value !== '';
+
+            const isTemplateButtonEnabled = isAuthProvided && (isEndpointSelected || isCustomEndpointEntered);
+            const isStartButtonEnabled = isTemplateButtonEnabled;
             
-            logElement.appendChild(logEntry);
-            logElement.scrollTop = logElement.scrollHeight;
+            if(getTemplateButton) getTemplateButton.disabled = !isTemplateButtonEnabled;
+            if(startButton) startButton.disabled = !isStartButtonEnabled;
         }
 
         function handleRecordTypeChange() {
             const selectElement = document.getElementById('recordType');
             const customInputDiv = document.getElementById('customEndpointInput');
             const selectedEndpointValueSpan = document.getElementById('selectedEndpointValue');
-            const getTemplateButton = document.getElementById('getTemplateButton');
             
             if (selectElement.value === 'custom') {
-                customInputDiv.style.display = 'block';
-                currentEndpoint = '';
-                selectedEndpointValueSpan.textContent = 'Custom';
-                getTemplateButton.disabled = !document.getElementById('apiEndpoint').value;
+                if(customInputDiv) customInputDiv.style.display = 'block';
+                if(selectedEndpointValueSpan) selectedEndpointValueSpan.textContent = 'Custom';
             } else if (selectElement.value === '') {
-                customInputDiv.style.display = 'none';
-                currentEndpoint = '';
-                selectedEndpointValueSpan.textContent = '';
-                getTemplateButton.disabled = true;
+                if(customInputDiv) customInputDiv.style.display = 'none';
+                if(selectedEndpointValueSpan) selectedEndpointValueSpan.textContent = '';
             } else {
-                customInputDiv.style.display = 'none';
-                currentEndpoint = selectElement.value;
-                selectedEndpointValueSpan.textContent = currentEndpoint;
-                getTemplateButton.disabled = false;
+                if(customInputDiv) customInputDiv.style.display = 'none';
+                if(selectedEndpointValueSpan) selectedEndpointValueSpan.textContent = selectElement.value;
             }
+            checkFormValidity();
         }
-        
+
         function handleCustomEndpointChange() {
             const customEndpointInput = document.getElementById('apiEndpoint');
-            const getTemplateButton = document.getElementById('getTemplateButton');
             const selectedEndpointValueSpan = document.getElementById('selectedEndpointValue');
 
-            currentEndpoint = customEndpointInput.value;
-            selectedEndpointValueSpan.textContent = currentEndpoint || 'Custom';
-            getTemplateButton.disabled = !customEndpointInput.value;
+            if(selectedEndpointValueSpan) selectedEndpointValueSpan.textContent = customEndpointInput.value || 'Custom';
+            checkFormValidity();
         }
-
 
         function toggleGuide() {
             const guide = document.getElementById('updateGuide');
             const button = document.getElementById('toggleGuideButton');
-            if (guide.style.display === 'block') {
-                guide.style.display = 'none';
-                button.textContent = 'Show Guide';
-            } else {
-                guide.style.display = 'block';
-                button.textContent = 'Hide Guide';
+            if (guide && button) {
+                if (guide.style.display === 'block') {
+                    guide.style.display = 'none';
+                    button.textContent = 'Show Guide';
+                } else {
+                    guide.style.display = 'block';
+                    button.textContent = 'Hide Guide';
+                }
             }
         }
 
         function stopProcessing() {
             isProcessing = false;
             log('Processing stopped by user.', 'error');
-            document.getElementById('startButton').disabled = false;
-            document.getElementById('stopButton').style.display = 'none';
-            document.getElementById('getTemplateButton').disabled = false;
+            const startButton = document.getElementById('startButton');
+            const stopButton = document.getElementById('stopButton');
+            const proceedButton = document.getElementById('proceedButton');
+            const getTemplateButton = document.getElementById('getTemplateButton');
+
+            if (startButton) startButton.disabled = false;
+            if (getTemplateButton) getTemplateButton.disabled = false;
+            if (stopButton) stopButton.style.display = 'none';
+            if (proceedButton) proceedButton.style.display = 'none';
+            
+            if (proceedResolver) {
+                proceedResolver();
+                proceedResolver = null;
+            }
         }
 
         function updateProgressBar(count, total) {
             const progressBar = document.getElementById('progressBar');
             const progressStatus = document.getElementById('progressStatus');
-            const percentage = (count / total) * 100;
-            progressBar.style.width = `${percentage}%`;
-            progressStatus.textContent = `Progress: ${count} of ${total} records processed.`;
+            if (progressBar && progressStatus) {
+                const percentage = (count / total) * 100;
+                progressBar.style.width = `${percentage}%`;
+                progressStatus.textContent = `Progress: ${count} of ${total} records processed.`;
+            }
+        }
+
+        /**
+         * Fetches the IANA timezone identifier for a given location.
+         * @param {string} locationId - The location ID from the CSV file.
+         * @returns {string|null} The IANA timezone identifier (e.g., 'America/New_York') or null on failure.
+         */
+        async function getBusinessTimeZoneByLocation(locationId) {
+            if (businessTimeZoneCache[locationId]) {
+                log(`Using cached timezone for Location ID: ${locationId}`, 'info');
+                return businessTimeZoneCache[locationId];
+            }
+
+            // Updated API endpoint to use the specific locationId
+            const businessApiUrl = `https://spaces.nexudus.com/api/sys/businesses/${locationId}`;
+            
+            try {
+                const businessResponse = await fetch(businessApiUrl, {
+                    method: 'GET',
+                    headers: { 'Authorization': authHeader }
+                });
+
+                if (!businessResponse.ok) {
+                    const errorText = await businessResponse.text();
+                    throw new Error(`Failed to fetch business for Location ID ${locationId}. Status: ${businessResponse.status}. Message: ${errorText}`);
+                }
+                const businessData = await businessResponse.json();
+                
+                const simpleTimeZoneId = businessData.SimpleTimeZoneId;
+                
+                if (!simpleTimeZoneId) {
+                    throw new Error('Could not find SimpleTimeZoneId in the business record.');
+                }
+
+                const timeZoneApiUrl = `https://spaces.nexudus.com/api/sys/simpletimezones/${simpleTimeZoneId}`;
+                const timezoneResponse = await fetch(timeZoneApiUrl, {
+                    method: 'GET',
+                    headers: { 'Authorization': authHeader }
+                });
+
+                if (!timezoneResponse.ok) {
+                    const errorText = await timezoneResponse.text();
+                    throw new Error(`Failed to fetch timezone details for SimpleTimeZoneId ${simpleTimeZoneId}. Status: ${timezoneResponse.status}. Message: ${errorText}`);
+                }
+                const timezoneData = await timezoneResponse.json();
+                
+                if (!timezoneData.Iana) {
+                    throw new Error('Could not find Iana identifier in timezone details.');
+                }
+
+                log(`Successfully retrieved SimpleTimeZoneId: ${simpleTimeZoneId} for Location ID: ${locationId}`, 'success');
+                log(`Resolved to IANA timezone: ${timezoneData.Iana}`, 'success');
+                
+                businessTimeZoneCache[locationId] = timezoneData.Iana;
+                return timezoneData.Iana;
+
+            } catch (error) {
+                log(`Error: ${error.message}`, 'error');
+                return null;
+            }
         }
         
         async function getRecordData(endpoint, id, authHeader) {
@@ -448,17 +548,7 @@
             return { headers, records };
         }
         
-        function convertToIsoDate(dateString) {
-            const match = dateString.match(/^(\d{4}-\d{2}-\d{2})(?: (\d{2}:\d{2}))?$/);
-            if (match) {
-                const datePart = match[1];
-                const timePart = match[2] || '00:00';
-                return `${datePart}T${timePart}:00Z`;
-            }
-            return dateString;
-        }
-
-        function createPayload(record, method) {
+        function createPayload(record, method, convertLocalToUtcFunc) {
             const payload = {};
             for (const key in record) {
                 if (method === 'POST' && key === 'Id') continue;
@@ -466,7 +556,7 @@
                     const value = record[key];
 
                     if (dateFields.includes(key)) {
-                        payload[key] = convertToIsoDate(value);
+                        payload[key] = convertLocalToUtcFunc(value);
                     } else if (arrayFields.includes(key)) {
                         payload[key] = value.includes(';') ? value.split(';') : [value];
                     } else if (!isNaN(value) && value.trim() !== '') {
@@ -486,7 +576,7 @@
             const allHeaders = Object.keys(failedRecords[0]);
             const csvRows = [allHeaders.join(',')];
             for (const record of failedRecords) {
-                const row = allHeaders.map(header => {
+                const row = Array.from(allHeaders).map(header => {
                     const value = record[header] || '';
                     return `"${String(value).replace(/"/g, '""')}"`;
                 });
@@ -504,99 +594,6 @@
             URL.revokeObjectURL(url);
         }
 
-        async function getTemplate() {
-            const username = document.getElementById('username').value;
-            const password = document.getElementById('password').value;
-            const recordTypeSelect = document.getElementById('recordType');
-            const startButton = document.getElementById('startButton');
-            const stopButton = document.getElementById('stopButton');
-            const templateButton = document.getElementById('getTemplateButton');
-            
-            const apiEndpoint = recordTypeSelect.value === 'custom' ? document.getElementById('apiEndpoint').value : recordTypeSelect.value;
-            
-            if (!username || !password) {
-                log('Error: Please enter your username and password.', 'error');
-                return;
-            }
-            if (!apiEndpoint) {
-                log('Error: Please enter an API Endpoint URL.', 'error');
-                return;
-            }
-
-            log('Fetching records to create a CSV template...', 'info');
-            templateButton.disabled = true;
-            startButton.disabled = true;
-            stopButton.style.display = 'inline-block';
-
-            const authHeader = 'Basic ' + btoa(username + ':' + password);
-            
-            try {
-                const response = await fetch(`${apiEndpoint}?pageSize=10`, {
-                    method: 'GET',
-                    headers: { 'Authorization': authHeader }
-                });
-
-                if (!response.ok) {
-                    const errorText = await response.text();
-                    log(`Error: Failed to fetch records. Status: ${response.status}. Message: ${errorText}`, 'error');
-                    return;
-                }
-
-                let records = await response.json();
-                
-                // Check if the response is an object with a 'Records' property, which is common
-                if (records.Records) {
-                    records = records.Records;
-                }
-                
-                if (!Array.isArray(records) || records.length === 0) {
-                    log('No records found to create a template.', 'error');
-                    return;
-                }
-                
-                // Collect all unique headers from all records
-                const allHeaders = new Set();
-                records.forEach(record => {
-                    Object.keys(record).forEach(key => allHeaders.add(key));
-                });
-
-                const headerRow = Array.from(allHeaders).join(',');
-                
-                // Create data rows
-                const csvRows = [headerRow];
-                records.forEach(record => {
-                    const row = Array.from(allHeaders).map(header => {
-                        const value = record[header] || '';
-                        // Escape quotes and handle commas in values
-                        return `"${String(value).replace(/"/g, '""')}"`;
-                    });
-                    csvRows.push(row.join(','));
-                });
-                
-                const csvString = csvRows.join('\n');
-
-                const blob = new Blob([csvString], { type: 'text/csv' });
-                const url = URL.createObjectURL(blob);
-                const a = document.createElement('a');
-                a.href = url;
-                a.download = 'nexudus_template.csv';
-                document.body.appendChild(a);
-                a.click();
-                document.body.removeChild(a);
-                URL.revokeObjectURL(url);
-
-                log('CSV template created and downloaded successfully!', 'success');
-
-            } catch (error) {
-                const errorMsg = error.message || 'Network error.';
-                log(`Error: Failed to fetch records. Message: ${errorMsg}`, 'error');
-            } finally {
-                templateButton.disabled = false;
-                startButton.disabled = false;
-                stopButton.style.display = 'none';
-            }
-        }
-
         async function startUpdate() {
             const username = document.getElementById('username').value;
             const password = document.getElementById('password').value;
@@ -604,7 +601,7 @@
             const csvFile = document.getElementById('csvFile').files[0];
             const startButton = document.getElementById('startButton');
             const stopButton = document.getElementById('stopButton');
-            const templateButton = document.getElementById('getTemplateButton');
+            const getTemplateButton = document.getElementById('getTemplateButton');
             
             const apiEndpoint = recordTypeSelect.value === 'custom' ? document.getElementById('apiEndpoint').value : recordTypeSelect.value;
             const httpMethod = document.getElementById('httpMethod').value;
@@ -624,20 +621,26 @@
 
             log('Processing started...', 'info');
             startButton.disabled = true;
-            templateButton.disabled = true;
+            if(getTemplateButton) getTemplateButton.disabled = true;
             stopButton.style.display = 'inline-block';
             isProcessing = true;
             authHeader = 'Basic ' + btoa(username + ':' + password);
             processedCount = 0; // Reset progress counter
-
+            
             const reader = new FileReader();
             reader.onload = async function(event) {
                 const csvText = event.target.result;
-                const { records } = parseCSV(csvText);
+                const { headers, records } = parseCSV(csvText);
                 allRecords = records;
                 
                 if (allRecords.length === 0) {
                     log('Error: CSV file is empty or could not be parsed.', 'error');
+                    endProcessing();
+                    return;
+                }
+                
+                if (!headers.includes('LocationId')) {
+                    log('Error: CSV file is missing the required "LocationId" column. Aborting.', 'error');
                     endProcessing();
                     return;
                 }
@@ -666,12 +669,52 @@
             const apiEndpoint = document.getElementById('recordType').value === 'custom' ? document.getElementById('apiEndpoint').value : document.getElementById('recordType').value;
             const httpMethod = document.getElementById('httpMethod').value;
             const totalRecords = allRecords.length;
+            const proceedButton = document.getElementById('proceedButton');
+            const stopButton = document.getElementById('stopButton');
 
             for (const record of recordsToProcess) {
                 if (!isProcessing) break;
                 
                 const recordId = record['Id'];
                 let payload = {};
+
+                log(`Processing record for LocationId: ${record.LocationId || 'N/A'}...`, 'info');
+                
+                let businessTimeZoneId;
+                if (businessTimeZoneCache[record.LocationId]) {
+                    businessTimeZoneId = businessTimeZoneCache[record.LocationId];
+                    log(`Using cached timezone: ${businessTimeZoneId} for Location ID: ${record.LocationId}`, 'info');
+                } else {
+                    businessTimeZoneId = await getBusinessTimeZoneByLocation(record.LocationId);
+                    if (!businessTimeZoneId) {
+                        log(`Failed to retrieve timezone for Location ID ${record.LocationId}. Skipping this record.`, 'error');
+                        failedRecords.push({ ...record, ErrorMessage: 'Failed to retrieve timezone for this location.' });
+                        processedCount++;
+                        updateProgressBar(processedCount, totalRecords);
+                        continue;
+                    }
+                }
+                
+                const convertLocalToUtc = (dateString) => {
+                    const { DateTime } = luxon;
+                    const format = 'yyyy-MM-dd HH:mm';
+                    
+                    if (DateTime.fromISO(dateString).isValid) {
+                        log(`  - Date string "${dateString}" is already in ISO format. No conversion needed.`, 'info');
+                        return dateString;
+                    }
+
+                    const localDateTime = DateTime.fromFormat(dateString, format, { zone: businessTimeZoneId });
+                    
+                    if (localDateTime.isValid) {
+                        const utcDateTime = localDateTime.toUTC().toISO({ includeOffset: false, suppressMilliseconds: true });
+                        log(`  - Converting Local Time: "${dateString}" (Location Timezone: ${businessTimeZoneId}) -> UTC: "${utcDateTime}"`, 'info');
+                        return utcDateTime;
+                    }
+                    
+                    log(`  - Warning: Failed to convert date string "${dateString}". Sending original value.`, 'error');
+                    return dateString;
+                };
 
                 if (httpMethod === 'PUT') {
                     log(`Fetching existing record for ID ${recordId}...`, 'info');
@@ -680,11 +723,13 @@
                         const errorMsg = `Could not fetch existing record for ID ${recordId}.`;
                         log(`Error: ${errorMsg}`, 'error');
                         failedRecords.push({ ...record, ErrorMessage: errorMsg });
+                        processedCount++;
+                        updateProgressBar(processedCount, totalRecords);
                         continue;
                     }
-                    payload = mergePayloads(existingRecord, createPayload(record, httpMethod));
+                    payload = mergePayloads(existingRecord, createPayload(record, httpMethod, convertLocalToUtc));
                 } else if (httpMethod === 'POST') {
-                    payload = createPayload(record, httpMethod);
+                    payload = createPayload(record, httpMethod, convertLocalToUtc);
                 }
                 
                 const fetchOptions = {
@@ -714,10 +759,83 @@
                 processedCount++;
                 updateProgressBar(processedCount, totalRecords);
 
+                if (processedCount === 1 && isProcessing) {
+                    isProcessing = false;
+                    log('First record processed. Please check the Nexudus Admin Panel to confirm the changes before proceeding. Click "Proceed" to continue or "Stop Processing" to cancel the rest of the batch.', 'info');
+                    
+                    proceedButton.style.display = 'inline-block';
+                    stopButton.style.display = 'inline-block';
+
+                    await new Promise(resolve => {
+                        proceedResolver = resolve;
+                        proceedButton.onclick = () => {
+                            isProcessing = true;
+                            proceedButton.style.display = 'none';
+                            log('Proceeding with the rest of the records...', 'info');
+                            resolve();
+                        };
+                        stopButton.onclick = () => {
+                            isProcessing = false;
+                            proceedButton.style.display = 'none';
+                            stopButton.style.display = 'none';
+                            log('Processing stopped by user. No more records will be processed.', 'error');
+                            resolve();
+                        };
+                    });
+
+                    if (!isProcessing) break;
+                }
+
                 if (isProcessing) {
                     await new Promise(resolve => setTimeout(resolve, requestDelay));
                 }
             }
+        }
+        
+        function createPayload(record, method, convertLocalToUtcFunc) {
+            const payload = {};
+            for (const key in record) {
+                if (method === 'POST' && key === 'Id') continue;
+                if (record[key] !== null && record[key] !== '') {
+                    const value = record[key];
+
+                    if (dateFields.includes(key)) {
+                        payload[key] = convertLocalToUtcFunc(value);
+                    } else if (arrayFields.includes(key)) {
+                        payload[key] = value.includes(';') ? value.split(';') : [value];
+                    } else if (!isNaN(value) && value.trim() !== '') {
+                        payload[key] = parseFloat(value);
+                    } else if (value.toLowerCase() === 'true' || value.toLowerCase() === 'false') {
+                        payload[key] = value.toLowerCase() === 'true';
+                    } else {
+                        payload[key] = value;
+                    }
+                }
+            }
+            return payload;
+        }
+
+        function downloadFailedRecords() {
+            if (failedRecords.length === 0) return;
+            const allHeaders = Object.keys(failedRecords[0]);
+            const csvRows = [allHeaders.join(',')];
+            for (const record of failedRecords) {
+                const row = Array.from(allHeaders).map(header => {
+                    const value = record[header] || '';
+                    return `"${String(value).replace(/"/g, '""')}"`;
+                });
+                csvRows.push(row.join(','));
+            }
+            const csvString = csvRows.join('\n');
+            const blob = new Blob([csvString], { type: 'text/csv' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'failed_api_updates.csv';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
         }
 
         function endProcessing() {
@@ -725,7 +843,7 @@
             isProcessing = false;
             document.getElementById('startButton').disabled = false;
             document.getElementById('stopButton').style.display = 'none';
-            document.getElementById('getTemplateButton').disabled = false;
+            document.getElementById('proceedButton').style.display = 'none';
 
             if (failedRecords.length > 0) {
                 document.getElementById('downloadButton').style.display = 'block';
