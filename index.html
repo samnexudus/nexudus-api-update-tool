@@ -226,14 +226,23 @@
 
         <!-- Authentication Section -->
         <h3>1. Authentication</h3>
-        <p>Enter your username and password for the Nexudus account you are creating or updating records for. This information is not stored.</p>
-        <div>
+        <p>Choose your authentication method and enter your credentials. This information is not stored.</p>
+        <div class="form-group-inline">
+            <label for="authMethod">Auth Method:</label>
+            <input type="radio" id="authMethodBasic" name="authMethod" value="basic" checked onchange="toggleAuthFields()">
+            <label for="authMethodBasic">Basic Auth</label>
+            <input type="radio" id="authMethodOAuth" name="authMethod" value="oauth2" onchange="toggleAuthFields()">
+            <label for="authMethodOAuth">OAuth2</label>
+        </div>
+        <div id="basicAuthFields">
             <label for="username" class="font-medium text-gray-700">Username:</label>
             <input type="text" id="username" oninput="checkFormValidity()">
-        </div>
-        <div>
             <label for="password" class="font-medium text-gray-700">Password:</label>
             <input type="password" id="password" oninput="checkFormValidity()">
+        </div>
+        <div id="oauth2AuthFields" style="display: none;">
+            <label for="oauth2Token" class="font-medium text-gray-700">OAuth2 Access Token:</label>
+            <input type="password" id="oauth2Token" oninput="checkFormValidity()">
         </div>
 
         <!-- API Configuration Section -->
@@ -278,6 +287,7 @@
             <select id="httpMethod">
                 <option value="PUT">Update Records <span class="light-text">(PUT)</span></option>
                 <option value="POST">Create Records <span class="light-text">(POST)</span></option>
+                <option value="DELETE">Delete Records <span class="light-text">(DELETE)</span></option>
             </select>
         </div>
         
@@ -339,22 +349,46 @@
         }
         
         function checkFormValidity() {
-            const usernameInput = document.getElementById('username');
-            const passwordInput = document.getElementById('password');
+            const authMethod = document.querySelector('input[name="authMethod"]:checked').value;
             const recordTypeSelect = document.getElementById('recordType');
             const customEndpointInput = document.getElementById('apiEndpoint');
             const getTemplateButton = document.getElementById('getTemplateButton');
             const startButton = document.getElementById('startButton');
+            
+            let isAuthProvided = false;
+            if (authMethod === 'basic') {
+                const usernameInput = document.getElementById('username');
+                const passwordInput = document.getElementById('password');
+                isAuthProvided = usernameInput.value !== '' && passwordInput.value !== '';
+            } else if (authMethod === 'oauth2') {
+                const oauth2TokenInput = document.getElementById('oauth2Token');
+                isAuthProvided = oauth2TokenInput.value !== '';
+            }
 
             const isEndpointSelected = recordTypeSelect.value !== '' && recordTypeSelect.value !== 'custom';
             const isCustomEndpointEntered = recordTypeSelect.value === 'custom' && customEndpointInput.value !== '';
-            const isAuthProvided = usernameInput.value !== '' && passwordInput.value !== '';
 
             const isTemplateButtonEnabled = isAuthProvided && (isEndpointSelected || isCustomEndpointEntered);
             const isStartButtonEnabled = isTemplateButtonEnabled;
             
             if(getTemplateButton) getTemplateButton.disabled = !isTemplateButtonEnabled;
             if(startButton) startButton.disabled = !isStartButtonEnabled;
+        }
+        
+        // Toggles visibility of auth fields based on radio button selection
+        function toggleAuthFields() {
+            const authMethod = document.querySelector('input[name="authMethod"]:checked').value;
+            const basicAuthDiv = document.getElementById('basicAuthFields');
+            const oauth2AuthDiv = document.getElementById('oauth2AuthFields');
+            
+            if (authMethod === 'basic') {
+                basicAuthDiv.style.display = 'block';
+                oauth2AuthDiv.style.display = 'none';
+            } else if (authMethod === 'oauth2') {
+                basicAuthDiv.style.display = 'none';
+                oauth2AuthDiv.style.display = 'block';
+            }
+            checkFormValidity();
         }
 
         function handleRecordTypeChange() {
@@ -597,8 +631,29 @@
         }
 
         async function startUpdate() {
-            const username = document.getElementById('username').value;
-            const password = document.getElementById('password').value;
+            // Get selected auth method
+            const authMethod = document.querySelector('input[name="authMethod"]:checked').value;
+            let username, password, oauth2Token;
+
+            // Build auth header based on selection
+            if (authMethod === 'basic') {
+                username = document.getElementById('username').value;
+                password = document.getElementById('password').value;
+                if (!username || !password) {
+                    log('Error: Please enter your username and password.', 'error');
+                    return;
+                }
+                authHeader = 'Basic ' + btoa(username + ':' + password);
+            } else if (authMethod === 'oauth2') {
+                oauth2Token = document.getElementById('oauth2Token').value;
+                if (!oauth2Token) {
+                    log('Error: Please enter your OAuth2 access token.', 'error');
+                    return;
+                }
+                authHeader = 'Bearer ' + oauth2Token;
+            }
+
+
             const recordTypeSelect = document.getElementById('recordType');
             const csvFile = document.getElementById('csvFile').files[0];
             const startButton = document.getElementById('startButton');
@@ -608,10 +663,6 @@
             const apiEndpoint = recordTypeSelect.value === 'custom' ? document.getElementById('apiEndpoint').value : recordTypeSelect.value;
             const httpMethod = document.getElementById('httpMethod').value;
             
-            if (!username || !password) {
-                log('Error: Please enter your username and password.', 'error');
-                return;
-            }
             if (!apiEndpoint) {
                 log('Error: Please enter an API Endpoint URL.', 'error');
                 return;
@@ -626,7 +677,6 @@
             if(getTemplateButton) getTemplateButton.disabled = true;
             stopButton.style.display = 'inline-block';
             isProcessing = true;
-            authHeader = 'Basic ' + btoa(username + ':' + password);
             processedCount = 0; // Reset progress counter
             
             const reader = new FileReader();
@@ -646,7 +696,8 @@
                     endProcessing();
                     return;
                 }
-
+                
+                // Only perform array discovery for PUT requests
                 if (httpMethod === 'PUT') {
                     const recordToDiscover = allRecords[0];
                     if (recordToDiscover && recordToDiscover['Id']) {
@@ -679,85 +730,115 @@
                 
                 const recordId = record['Id'];
                 let payload = {};
-
-                log(`Processing record for LocationId: ${record.LocationId || 'N/A'}...`, 'info');
+                let fetchOptions = {};
                 
-                let businessTimeZoneId;
-                if (businessTimeZoneCache[record.LocationId]) {
-                    businessTimeZoneId = businessTimeZoneCache[record.LocationId];
-                    log(`Using cached timezone for Location ID ${record.LocationId}`, 'info');
-                } else {
-                    businessTimeZoneId = await getBusinessTimeZoneByLocation(record.LocationId);
-                    if (!businessTimeZoneId) {
-                        log(`Failed to retrieve timezone for Location ID ${record.LocationId}. Skipping this record.`, 'error');
-                        failedRecords.push({ ...record, ErrorMessage: 'Failed to retrieve timezone for this location.' });
+                if (httpMethod === 'DELETE') {
+                    if (!recordId) {
+                        log(`Error: Skipping record as 'Id' column is required for DELETE method.`, 'error');
+                        failedRecords.push({ ...record, ErrorMessage: 'Id is required for DELETE method.' });
                         processedCount++;
                         updateProgressBar(processedCount, totalRecords);
                         continue;
                     }
-                }
-                
-                const convertLocalToUtc = (dateString) => {
-                    const { DateTime } = luxon;
-                    const format = 'yyyy-MM-dd HH:mm';
-                    
-                    log(`    -> DEBUG: Original date string: "${dateString}"`, 'info');
-                    
-                    if (DateTime.fromISO(dateString).isValid) {
-                        log(`    -> DEBUG: Date string is already in ISO format. No conversion needed.`, 'info');
-                        return dateString;
-                    }
-
-                    const localDateTime = DateTime.fromFormat(dateString, format, { zone: businessTimeZoneId });
-                    
-                    if (localDateTime.isValid) {
-                        const utcDateTime = localDateTime.toUTC().toISO({ includeOffset: false, suppressMilliseconds: true });
-                        log(`    -> DEBUG: Converting Local Time: "${localDateTime.toFormat(format)}", (Timezone: ${businessTimeZoneId}) to UTC: "${utcDateTime}"`, 'info');
-                        return utcDateTime;
-                    }
-                    
-                    log(`    -> DEBUG: Warning: Failed to convert date string "${dateString}". Sending original value.`, 'error');
-                    return dateString;
-                };
-
-                if (httpMethod === 'PUT') {
-                    log(`Fetching existing record for ID ${recordId}...`, 'info');
-                    const existingRecord = await getRecordData(apiEndpoint, recordId, authHeader);
-                    if (!existingRecord) {
-                        const errorMsg = `Could not fetch existing record for ID ${recordId}.`;
-                        log(`Error: ${errorMsg}`, 'error');
+                    log(`Processing record with ID ${recordId} for deletion...`, 'info');
+                    fetchOptions = {
+                        method: httpMethod,
+                        headers: { 'Authorization': authHeader }
+                    };
+                    try {
+                        const response = await fetch(`${apiEndpoint}/${recordId}`, fetchOptions);
+                        if (response.ok) {
+                            log(`Success: Record ID ${recordId} deleted successfully.`, 'success');
+                        } else {
+                            const errorText = await response.text();
+                            log(`Error: Failed to delete Record ID ${recordId}. Status: ${response.status}. Message: ${errorText}`, 'error');
+                            failedRecords.push({ ...record, ErrorMessage: errorText });
+                        }
+                    } catch (error) {
+                        const errorMsg = error.message || 'Network error.';
+                        log(`Error: Failed to send DELETE request for Record ID ${recordId}. Message: ${errorMsg}`, 'error');
                         failedRecords.push({ ...record, ErrorMessage: errorMsg });
-                        processedCount++;
-                        updateProgressBar(processedCount, totalRecords);
-                        continue;
                     }
-                    payload = mergePayloads(existingRecord, createPayload(record, httpMethod, convertLocalToUtc));
-                } else if (httpMethod === 'POST') {
-                    payload = createPayload(record, httpMethod, convertLocalToUtc);
-                }
+                } else {
+                    log(`Processing record for LocationId: ${record.LocationId || 'N/A'}...`, 'info');
                 
-                const fetchOptions = {
-                    method: httpMethod,
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': authHeader
-                    },
-                    body: JSON.stringify(payload)
-                };
-
-                try {
-                    const response = await fetch(apiEndpoint, fetchOptions);
-                    if (response.ok) {
-                        log(`Success: Record ID ${recordId || 'new record'} processed successfully with method ${httpMethod}.`, 'success');
+                    let businessTimeZoneId;
+                    if (businessTimeZoneCache[record.LocationId]) {
+                        businessTimeZoneId = businessTimeZoneCache[record.LocationId];
+                        log(`Using cached timezone for Location ID ${record.LocationId}`, 'info');
                     } else {
-                        const errorText = await response.text();
-                        log(`Error: Failed to process Record ID ${recordId || 'new record'} with method ${httpMethod}. Status: ${response.status}. Message: ${errorText}`, 'error');
-                        failedRecords.push({ ...record, ErrorMessage: errorText });
+                        businessTimeZoneId = await getBusinessTimeZoneByLocation(record.LocationId);
+                        if (!businessTimeZoneId) {
+                            log(`Failed to retrieve timezone for Location ID ${record.LocationId}. Skipping this record.`, 'error');
+                            failedRecords.push({ ...record, ErrorMessage: 'Failed to retrieve timezone for this location.' });
+                            processedCount++;
+                            updateProgressBar(processedCount, totalRecords);
+                            continue;
+                        }
                     }
-                } catch (error) {
-                    const errorMsg = error.message || 'Network error.';
-                    log(`Error: Failed to send request for Record ID ${recordId || 'new record'}. Message: ${errorMsg}`, 'error');
-                    failedRecords.push({ ...record, ErrorMessage: errorMsg });
+                    
+                    const convertLocalToUtc = (dateString) => {
+                        const { DateTime } = luxon;
+                        const format = 'yyyy-MM-dd HH:mm';
+                        
+                        log(`    -> DEBUG: Original date string: "${dateString}"`, 'info');
+                        
+                        if (DateTime.fromISO(dateString).isValid) {
+                            log(`    -> DEBUG: Date string is already in ISO format. No conversion needed.`, 'info');
+                            return dateString;
+                        }
+
+                        const localDateTime = DateTime.fromFormat(dateString, format, { zone: businessTimeZoneId });
+                        
+                        if (localDateTime.isValid) {
+                            const utcDateTime = localDateTime.toUTC().toISO({ includeOffset: false, suppressMilliseconds: true });
+                            log(`    -> DEBUG: Converting Local Time: "${localDateTime.toFormat(format)}", (Timezone: ${businessTimeZoneId}) to UTC: "${utcDateTime}"`, 'info');
+                            return utcDateTime;
+                        }
+                        
+                        log(`    -> DEBUG: Warning: Failed to convert date string "${dateString}". Sending original value.`, 'error');
+                        return dateString;
+                    };
+
+                    if (httpMethod === 'PUT') {
+                        log(`Fetching existing record for ID ${recordId}...`, 'info');
+                        const existingRecord = await getRecordData(apiEndpoint, recordId, authHeader);
+                        if (!existingRecord) {
+                            const errorMsg = `Could not fetch existing record for ID ${recordId}.`;
+                            log(`Error: ${errorMsg}`, 'error');
+                            failedRecords.push({ ...record, ErrorMessage: errorMsg });
+                            processedCount++;
+                            updateProgressBar(processedCount, totalRecords);
+                            continue;
+                        }
+                        payload = mergePayloads(existingRecord, createPayload(record, httpMethod, convertLocalToUtc));
+                    } else if (httpMethod === 'POST') {
+                        payload = createPayload(record, httpMethod, convertLocalToUtc);
+                    }
+                    
+                    fetchOptions = {
+                        method: httpMethod,
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': authHeader
+                        },
+                        body: JSON.stringify(payload)
+                    };
+                    
+                    try {
+                        const response = await fetch(apiEndpoint, fetchOptions);
+                        if (response.ok) {
+                            log(`Success: Record ID ${recordId || 'new record'} processed successfully with method ${httpMethod}.`, 'success');
+                        } else {
+                            const errorText = await response.text();
+                            log(`Error: Failed to process Record ID ${recordId || 'new record'} with method ${httpMethod}. Status: ${response.status}. Message: ${errorText}`, 'error');
+                            failedRecords.push({ ...record, ErrorMessage: errorText });
+                        }
+                    } catch (error) {
+                        const errorMsg = error.message || 'Network error.';
+                        log(`Error: Failed to send request for Record ID ${recordId || 'new record'}. Message: ${errorMsg}`, 'error');
+                        failedRecords.push({ ...record, ErrorMessage: errorMsg });
+                    }
                 }
                 
                 processedCount++;
@@ -854,6 +935,8 @@
                 log(`\n${failedRecords.length} record(s) failed to update. Click "Download Failed Records" to get the details.`, 'error');
             }
         }
+        // Initial call to set up the fields based on the default radio button selection
+        window.onload = toggleAuthFields;
     </script>
 </body>
 </html>
