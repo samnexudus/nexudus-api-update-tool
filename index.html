@@ -262,7 +262,7 @@
                 <option value="https://spaces.nexudus.com/api/billing/coworkercontracts">Contracts</option>
                 <option value="https://spaces.nexudus.com/api/billing/coworkerdiscountcodes">Customer Discount Code</option>
                 <option value="https://spaces.nexudus.com/api/spaces/coworkerdatafiles">Customer Documents</option>
-                <option value="https://spaces.nexudus.com/api/spaces/coworkernotes">Customer Note</option>
+                <option value="https://spaces.nexudus.com/api/spaces/coworkernotes">Customer Note</p>
                 <option value="https://spaces.nexudus.com/api/billing/coworkerproducts">Customer Product Sale</option>
                 <option value="https://spaces.nexudus.com/api/spaces/coworkers">Customers</option>
                 <option value="https://spaces.nexudus.com/api/spaces/coworkerdeliveries">Deliveries</option>
@@ -346,6 +346,27 @@
                 logElement.appendChild(logEntry);
                 logElement.scrollTop = logElement.scrollHeight;
             }
+        }
+
+        async function setAuthHeader() {
+            const authMethod = document.querySelector('input[name="authMethod"]:checked').value;
+            if (authMethod === 'basic') {
+                const username = document.getElementById('username').value;
+                const password = document.getElementById('password').value;
+                if (!username || !password) {
+                    log('Error: Please enter your username and password.', 'error');
+                    return false;
+                }
+                authHeader = 'Basic ' + btoa(username + ':' + password);
+            } else if (authMethod === 'oauth2') {
+                const oauth2Token = document.getElementById('oauth2Token').value;
+                if (!oauth2Token) {
+                    log('Error: Please enter your OAuth2 access token.', 'error');
+                    return false;
+                }
+                authHeader = 'Bearer ' + oauth2Token;
+            }
+            return true;
         }
         
         function checkFormValidity() {
@@ -607,6 +628,86 @@
             return payload;
         }
 
+        async function getTemplate() {
+            if (!await setAuthHeader()) {
+                return;
+            }
+
+            const recordTypeSelect = document.getElementById('recordType');
+            const apiEndpoint = recordTypeSelect.value === 'custom' ? document.getElementById('apiEndpoint').value : recordTypeSelect.value;
+            
+            if (!apiEndpoint || apiEndpoint === '') {
+                log('Error: Please select or enter an API endpoint before getting a template.', 'error');
+                return;
+            }
+
+            log('Fetching sample record to create CSV template...', 'info');
+            try {
+                // Fetch a list of records to get a sample
+                const response = await fetch(apiEndpoint, {
+                    method: 'GET',
+                    headers: { 'Authorization': authHeader }
+                });
+
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    throw new Error(`Failed to fetch records. Status: ${response.status}. Message: ${errorText}`);
+                }
+
+                const data = await response.json();
+                let sampleRecord = null;
+                if (data.Records && data.Records.length > 0) {
+                    sampleRecord = data.Records[0];
+                } else if (data.length > 0) {
+                    // Handle cases where the response is a direct array of objects
+                    sampleRecord = data[0];
+                } else {
+                    log('No records found at this endpoint to generate a template. The API may require specific query parameters.', 'error');
+                    return;
+                }
+
+                // Exclude some fields that aren't typically updated via CSV
+                const excludedFields = ['CreatedOn', 'UpdatedOn'];
+                const headers = Object.keys(sampleRecord).filter(key => !excludedFields.includes(key));
+                
+                // Get the values for the first record and format for CSV
+                const values = headers.map(header => {
+                    let value = sampleRecord[header];
+                    if (value === null || value === undefined) {
+                        return '';
+                    }
+                    if (Array.isArray(value)) {
+                        return value.join(';');
+                    }
+                    if (typeof value === 'object') {
+                        // Stringify complex objects
+                        value = JSON.stringify(value);
+                    }
+                    // Wrap value in quotes if it contains commas
+                    if (typeof value === 'string' && value.includes(',')) {
+                        return `"${value.replace(/"/g, '""')}"`;
+                    }
+                    return value;
+                });
+
+                const csvString = `${headers.join(',')}\n${values.join(',')}`;
+                const blob = new Blob([csvString], { type: 'text/csv' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'api_template.csv';
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+                
+                log('CSV template generated and downloaded successfully.', 'success');
+
+            } catch (error) {
+                log(`Error creating template: ${error.message}`, 'error');
+            }
+        }
+
         function downloadFailedRecords() {
             if (failedRecords.length === 0) return;
             const allHeaders = Object.keys(failedRecords[0]);
@@ -631,28 +732,10 @@
         }
 
         async function startUpdate() {
-            // Get selected auth method
-            const authMethod = document.querySelector('input[name="authMethod"]:checked').value;
-            let username, password, oauth2Token;
-
-            // Build auth header based on selection
-            if (authMethod === 'basic') {
-                username = document.getElementById('username').value;
-                password = document.getElementById('password').value;
-                if (!username || !password) {
-                    log('Error: Please enter your username and password.', 'error');
-                    return;
-                }
-                authHeader = 'Basic ' + btoa(username + ':' + password);
-            } else if (authMethod === 'oauth2') {
-                oauth2Token = document.getElementById('oauth2Token').value;
-                if (!oauth2Token) {
-                    log('Error: Please enter your OAuth2 access token.', 'error');
-                    return;
-                }
-                authHeader = 'Bearer ' + oauth2Token;
+            if (!await setAuthHeader()) {
+                endProcessing();
+                return;
             }
-
 
             const recordTypeSelect = document.getElementById('recordType');
             const csvFile = document.getElementById('csvFile').files[0];
@@ -665,10 +748,12 @@
             
             if (!apiEndpoint) {
                 log('Error: Please enter an API Endpoint URL.', 'error');
+                endProcessing();
                 return;
             }
             if (!csvFile) {
                 log('Error: Please upload a CSV file.', 'error');
+                endProcessing();
                 return;
             }
 
