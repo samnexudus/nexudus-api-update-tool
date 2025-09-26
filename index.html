@@ -860,7 +860,7 @@
                     return;
                 }
                 
-                if (!headers.includes('Id')) {
+                if (!headers.includes('Id') && httpMethod !== 'POST') {
                     log('Error: CSV file is missing the required "Id" column. Aborting.', 'error');
                     endProcessing();
                     return;
@@ -898,55 +898,33 @@
                 if (!isProcessing) break;
                 
                 const recordId = record['Id'];
-                if (!recordId) {
-                     log(`Error: Skipping record as 'Id' column is required for all methods.`, 'error');
+                if (!recordId && httpMethod !== 'POST') {
+                     log(`Error: Skipping record as 'Id' column is required for this method.`, 'error');
                      failedRecords.push({ ...record, ErrorMessage: 'Id is required for this method.' });
                      processedCount++;
                      updateProgressBar(processedCount, totalRecords);
                      continue;
                 }
 
-                if (httpMethod === 'GET') {
-                    log(`Fetching details for record with ID ${recordId}...`, 'info');
-                    try {
-                        const response = await fetch(`${apiEndpoint}/${recordId}`, { method: 'GET', headers: { 'Authorization': authHeader } });
-                        if (response.ok) {
-                            const data = await response.json();
-                            fetchedRecords.push(data);
-                            log(`Success: Details for Record ID ${recordId} fetched.`, 'success');
-                        } else {
-                            const errorText = await response.text();
-                            log(`Error: Failed to fetch details for Record ID ${recordId}. Status: ${response.status}. Message: ${errorText}`, 'error');
-                            failedRecords.push({ ...record, ErrorMessage: errorText });
-                        }
-                    } catch (error) {
-                        const errorMsg = error.message || 'Network error.';
-                        log(`Error: Failed to send GET request for Record ID ${recordId}. Message: ${errorMsg}`, 'error');
-                        failedRecords.push({ ...record, ErrorMessage: errorMsg });
-                    }
-                } else if (httpMethod === 'DELETE') {
-                     log(`Processing record with ID ${recordId} for deletion...`, 'info');
-                     try {
-                         const response = await fetch(`${apiEndpoint}/${recordId}`, { method: httpMethod, headers: { 'Authorization': authHeader } });
-                         if (response.ok) {
-                             log(`Success: Record ID ${recordId} deleted successfully.`, 'success');
-                         } else {
-                             const errorText = await response.text();
-                             log(`Error: Failed to delete Record ID ${recordId}. Status: ${response.status}. Message: ${errorText}`, 'error');
-                             failedRecords.push({ ...record, ErrorMessage: errorText });
-                         }
-                     } catch (error) {
-                         const errorMsg = error.message || 'Network error.';
-                         log(`Error: Failed to send DELETE request for Record ID ${recordId}. Message: ${errorMsg}`, 'error');
-                         failedRecords.push({ ...record, ErrorMessage: errorMsg });
-                     }
-                } else { // PUT or POST
-                    log(`Processing record for LocationId: ${record.LocationId || 'N/A'}...`, 'info');
+                let targetEndpoint = apiEndpoint;
+                let fetchOptions = {};
                 
+                if (httpMethod === 'GET' || httpMethod === 'DELETE') {
+                    targetEndpoint = `${apiEndpoint}/${recordId}`;
+                    fetchOptions = { method: httpMethod, headers: { 'Authorization': authHeader } };
+                } else if (httpMethod === 'PUT' || httpMethod === 'POST') {
+                    if (!record['LocationId']) {
+                        log(`Error: Skipping record as 'LocationId' is required for this method.`, 'error');
+                        failedRecords.push({ ...record, ErrorMessage: 'LocationId is required for this method.' });
+                        processedCount++;
+                        updateProgressBar(processedCount, totalRecords);
+                        continue;
+                    }
+                    
+                    log(`Processing record for LocationId: ${record.LocationId || 'N/A'}...`, 'info');
                     let businessTimeZoneId;
                     if (businessTimeZoneCache[record.LocationId]) {
                         businessTimeZoneId = businessTimeZoneCache[record.LocationId];
-                        log(`Using cached timezone for Location ID ${record.LocationId}`, 'info');
                     } else {
                         businessTimeZoneId = await getBusinessTimeZoneByLocation(record.LocationId);
                         if (!businessTimeZoneId) {
@@ -957,34 +935,20 @@
                             continue;
                         }
                     }
-                    
+
                     const convertLocalToUtc = (dateString) => {
                         const { DateTime } = luxon;
                         const format = 'yyyy-MM-dd HH:mm';
-                        
-                        log(`   -> DEBUG: Original date string: "${dateString}"`, 'info');
-                        
-                        if (DateTime.fromISO(dateString).isValid) {
-                            log(`   -> DEBUG: Date string is already in ISO format. No conversion needed.`, 'info');
-                            return dateString;
-                        }
-
+                        if (DateTime.fromISO(dateString).isValid) { return dateString; }
                         const localDateTime = DateTime.fromFormat(dateString, format, { zone: businessTimeZoneId });
-                        
                         if (localDateTime.isValid) {
                             const utcDateTime = localDateTime.toUTC().toISO({ includeOffset: false, suppressMilliseconds: true });
-                            log(`   -> DEBUG: Converting Local Time: "${localDateTime.toFormat(format)}", (Timezone: ${businessTimeZoneId}) to UTC: "${utcDateTime}"`, 'info');
                             return utcDateTime;
                         }
-                        
-                        log(`   -> DEBUG: Warning: Failed to convert date string "${dateString}". Sending original value.`, 'error');
                         return dateString;
                     };
 
                     let payload = {};
-                    let fetchOptions = {};
-                    let targetEndpoint = apiEndpoint;
-
                     if (httpMethod === 'PUT') {
                         log(`Fetching existing record for ID ${recordId}...`, 'info');
                         const existingRecord = await getRecordData(apiEndpoint, recordId);
@@ -997,35 +961,38 @@
                             continue;
                         }
                         payload = mergePayloads(existingRecord, createPayload(record, httpMethod, convertLocalToUtc));
-                        targetEndpoint = `${apiEndpoint}/${recordId}`; // PUT requires ID in the URL
-                    } else if (httpMethod === 'POST') {
+                    } else { // POST
                         payload = createPayload(record, httpMethod, convertLocalToUtc);
-                        // POST does not include ID in the URL
                     }
                     
                     fetchOptions = {
                         method: httpMethod,
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'Authorization': authHeader
-                        },
+                        headers: { 'Content-Type': 'application/json', 'Authorization': authHeader },
                         body: JSON.stringify(payload)
                     };
-                    
-                    try {
-                        const response = await fetch(targetEndpoint, fetchOptions);
-                        if (response.ok) {
-                            log(`Success: Record ID ${recordId || 'new record'} processed successfully with method ${httpMethod}.`, 'success');
+                }
+
+                try {
+                    log(`Sending request to: ${targetEndpoint}`, 'info');
+                    const response = await fetch(targetEndpoint, fetchOptions);
+
+                    if (response.ok) {
+                        if (httpMethod === 'GET') {
+                            const data = await response.json();
+                            fetchedRecords.push(data);
+                            log(`Success: Details for Record ID ${recordId} fetched.`, 'success');
                         } else {
-                            const errorText = await response.text();
-                            log(`Error: Failed to process Record ID ${recordId || 'new record'} with method ${httpMethod}. Status: ${response.status}. Message: ${errorText}`, 'error');
-                            failedRecords.push({ ...record, ErrorMessage: errorText });
+                            log(`Success: Record ID ${recordId || 'new record'} processed successfully with method ${httpMethod}.`, 'success');
                         }
-                    } catch (error) {
-                        const errorMsg = error.message || 'Network error.';
-                        log(`Error: Failed to send request for Record ID ${recordId || 'new record'}. Message: ${errorMsg}`, 'error');
-                        failedRecords.push({ ...record, ErrorMessage: errorMsg });
+                    } else {
+                        const errorText = await response.text();
+                        log(`Error: Failed to process Record ID ${recordId || 'new record'} with method ${httpMethod}. Status: ${response.status}. Message: ${errorText}`, 'error');
+                        failedRecords.push({ ...record, ErrorMessage: errorText });
                     }
+                } catch (error) {
+                    const errorMsg = error.message || 'Network error.';
+                    log(`Error: Failed to send request for Record ID ${recordId || 'new record'}. Message: ${errorMsg}`, 'error');
+                    failedRecords.push({ ...record, ErrorMessage: errorMsg });
                 }
                 
                 processedCount++;
