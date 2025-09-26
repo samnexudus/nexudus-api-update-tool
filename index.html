@@ -222,6 +222,9 @@
             <br>
             <h5>Create:</h5>
             <p>The process for creating new records is the same as above, but you <b>do not need to include the `Id`</b> in your CSV. Ensure all other fields are completed.</p>
+            <br>
+            <h5>Get (New!):</h5>
+            <p>To retrieve full record details, select the `GET` method. Your CSV file should contain only a single column named `Id` with the IDs of the records you wish to retrieve. The tool will download a new CSV with the full details of all successful requests.</p>
         </div>
 
         <!-- Authentication Section -->
@@ -262,7 +265,7 @@
                 <option value="https://spaces.nexudus.com/api/billing/coworkercontracts">Contracts</option>
                 <option value="https://spaces.nexudus.com/api/billing/coworkerdiscountcodes">Customer Discount Code</option>
                 <option value="https://spaces.nexudus.com/api/spaces/coworkerdatafiles">Customer Documents</option>
-                <option value="https://spaces.nexudus.com/api/spaces/coworkernotes">Customer Note</p>
+                <option value="https://spaces.nexudus.com/api/spaces/coworkernotes">Customer Note</option>
                 <option value="https://spaces.nexudus.com/api/billing/coworkerproducts">Customer Product Sale</option>
                 <option value="https://spaces.nexudus.com/api/spaces/coworkers">Customers</option>
                 <option value="https://spaces.nexudus.com/api/spaces/coworkerdeliveries">Deliveries</option>
@@ -284,10 +287,11 @@
         </div>
         <div class="form-group-inline">
             <label for="httpMethod" class="font-medium text-gray-700">HTTP Method:</label>
-            <select id="httpMethod">
+            <select id="httpMethod" onchange="checkFormValidity()">
                 <option value="PUT">Update Records <span class="light-text">(PUT)</span></option>
                 <option value="POST">Create Records <span class="light-text">(POST)</span></option>
                 <option value="DELETE">Delete Records <span class="light-text">(DELETE)</span></option>
+                <option value="GET">Get Records <span class="light-text">(GET)</span></option>
             </select>
         </div>
         
@@ -296,10 +300,10 @@
         <p>Upload the CSV file. The tool will use the 'Id' column to identify the record and all other columns to form the update payload.</p>
         <input type="file" id="csvFile" accept=".csv">
         <br><br>
-        <button id="startButton" onclick="startUpdate()" disabled>Start Update</button>
+        <button id="startButton" onclick="startUpdate()" disabled>Start Process</button>
         <button id="proceedButton" style="display: none;">Proceed</button>
         <button id="stopButton" onclick="stopProcessing()" style="display: none;">Stop Processing</button>
-        <button id="downloadButton" onclick="downloadFailedRecords()">Download Failed Records</button>
+        <button id="downloadButton" style="display: none;"></button>
 
         <!-- Progress Log Section -->
         <h3>4. Progress Log</h3>
@@ -311,9 +315,10 @@
     </div>
 
     <script>
-        // Array to store failed records
+        // Array to store failed records and successfully retrieved records
         let failedRecords = [];
         let allRecords = [];
+        let fetchedRecords = [];
         const requestDelay = 1100; // 1.1 seconds delay between requests to respect rate limits
         let isProcessing = false;
         let arrayFields = []; // Dynamically discovered array fields
@@ -321,6 +326,7 @@
         let authHeader = '';
         let proceedResolver = null;
         let businessTimeZoneCache = {}; // Cache for timezone data
+        let isGetOperation = false;
 
         // List of fields that are expected to be dates
         const dateFields = [
@@ -375,6 +381,7 @@
             const customEndpointInput = document.getElementById('apiEndpoint');
             const getTemplateButton = document.getElementById('getTemplateButton');
             const startButton = document.getElementById('startButton');
+            const httpMethod = document.getElementById('httpMethod').value;
             
             let isAuthProvided = false;
             if (authMethod === 'basic') {
@@ -390,10 +397,16 @@
             const isCustomEndpointEntered = recordTypeSelect.value === 'custom' && customEndpointInput.value !== '';
 
             const isTemplateButtonEnabled = isAuthProvided && (isEndpointSelected || isCustomEndpointEntered);
-            const isStartButtonEnabled = isTemplateButtonEnabled;
             
+            // Start button is enabled if auth and an endpoint are selected.
+            // For GET, the file is required later.
+            const isStartButtonEnabled = isAuthProvided && (isEndpointSelected || isCustomEndpointEntered);
+
             if(getTemplateButton) getTemplateButton.disabled = !isTemplateButtonEnabled;
             if(startButton) startButton.disabled = !isStartButtonEnabled;
+            if (startButton) {
+                startButton.textContent = httpMethod === 'GET' ? 'Start Get' : 'Start Update';
+            }
         }
         
         // Toggles visibility of auth fields based on radio button selection
@@ -708,23 +721,42 @@
             }
         }
 
-        function downloadFailedRecords() {
-            if (failedRecords.length === 0) return;
-            const allHeaders = Object.keys(failedRecords[0]);
-            const csvRows = [allHeaders.join(',')];
-            for (const record of failedRecords) {
-                const row = Array.from(allHeaders).map(header => {
-                    const value = record[header] || '';
-                    return `"${String(value).replace(/"/g, '""')}"`;
+        function downloadResults(records, fileName) {
+            if (records.length === 0) return;
+
+            // Get all unique headers from all records
+            const allHeaders = new Set();
+            records.forEach(record => {
+                Object.keys(record).forEach(key => allHeaders.add(key));
+            });
+
+            const headerArray = Array.from(allHeaders).sort();
+            const csvRows = [headerArray.join(',')];
+
+            for (const record of records) {
+                const row = headerArray.map(header => {
+                    let value = record[header] || '';
+                    if (Array.isArray(value)) {
+                        value = value.join(';');
+                    }
+                    if (typeof value === 'object') {
+                        value = JSON.stringify(value);
+                    }
+                    // Escape double quotes and enclose in quotes if needed
+                    if (typeof value === 'string' && (value.includes(',') || value.includes('"') || value.includes('\n'))) {
+                        return `"${value.replace(/"/g, '""')}"`;
+                    }
+                    return value;
                 });
                 csvRows.push(row.join(','));
             }
+
             const csvString = csvRows.join('\n');
             const blob = new Blob([csvString], { type: 'text/csv' });
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
-            a.download = 'failed_api_updates.csv';
+            a.download = fileName;
             document.body.appendChild(a);
             a.click();
             document.body.removeChild(a);
@@ -745,7 +777,8 @@
             
             const apiEndpoint = recordTypeSelect.value === 'custom' ? document.getElementById('apiEndpoint').value : recordTypeSelect.value;
             const httpMethod = document.getElementById('httpMethod').value;
-            
+            isGetOperation = (httpMethod === 'GET');
+
             if (!apiEndpoint) {
                 log('Error: Please enter an API Endpoint URL.', 'error');
                 endProcessing();
@@ -757,13 +790,15 @@
                 return;
             }
 
-            log('Processing started...', 'info');
+            log(`Processing started with method ${httpMethod}...`, 'info');
             startButton.disabled = true;
             if(getTemplateButton) getTemplateButton.disabled = true;
             stopButton.style.display = 'inline-block';
             isProcessing = true;
             processedCount = 0; // Reset progress counter
-            
+            fetchedRecords = []; // Reset fetched records for GET operation
+            failedRecords = []; // Reset failed records
+
             const reader = new FileReader();
             reader.onload = async function(event) {
                 const csvText = event.target.result;
@@ -776,8 +811,8 @@
                     return;
                 }
                 
-                if (!headers.includes('LocationId')) {
-                    log('Error: CSV file is missing the required "LocationId" column. Aborting.', 'error');
+                if (!headers.includes('Id')) {
+                    log('Error: CSV file is missing the required "Id" column. Aborting.', 'error');
                     endProcessing();
                     return;
                 }
@@ -814,37 +849,49 @@
                 if (!isProcessing) break;
                 
                 const recordId = record['Id'];
-                let payload = {};
-                let fetchOptions = {};
-                
-                if (httpMethod === 'DELETE') {
-                    if (!recordId) {
-                        log(`Error: Skipping record as 'Id' column is required for DELETE method.`, 'error');
-                        failedRecords.push({ ...record, ErrorMessage: 'Id is required for DELETE method.' });
-                        processedCount++;
-                        updateProgressBar(processedCount, totalRecords);
-                        continue;
-                    }
-                    log(`Processing record with ID ${recordId} for deletion...`, 'info');
-                    fetchOptions = {
-                        method: httpMethod,
-                        headers: { 'Authorization': authHeader }
-                    };
+                if (!recordId) {
+                     log(`Error: Skipping record as 'Id' column is required for all methods.`, 'error');
+                     failedRecords.push({ ...record, ErrorMessage: 'Id is required for this method.' });
+                     processedCount++;
+                     updateProgressBar(processedCount, totalRecords);
+                     continue;
+                }
+
+                if (httpMethod === 'GET') {
+                    log(`Fetching details for record with ID ${recordId}...`, 'info');
                     try {
-                        const response = await fetch(`${apiEndpoint}/${recordId}`, fetchOptions);
+                        const response = await fetch(`${apiEndpoint}/${recordId}`, { method: 'GET', headers: { 'Authorization': authHeader } });
                         if (response.ok) {
-                            log(`Success: Record ID ${recordId} deleted successfully.`, 'success');
+                            const data = await response.json();
+                            fetchedRecords.push(data);
+                            log(`Success: Details for Record ID ${recordId} fetched.`, 'success');
                         } else {
                             const errorText = await response.text();
-                            log(`Error: Failed to delete Record ID ${recordId}. Status: ${response.status}. Message: ${errorText}`, 'error');
+                            log(`Error: Failed to fetch details for Record ID ${recordId}. Status: ${response.status}. Message: ${errorText}`, 'error');
                             failedRecords.push({ ...record, ErrorMessage: errorText });
                         }
                     } catch (error) {
                         const errorMsg = error.message || 'Network error.';
-                        log(`Error: Failed to send DELETE request for Record ID ${recordId}. Message: ${errorMsg}`, 'error');
+                        log(`Error: Failed to send GET request for Record ID ${recordId}. Message: ${errorMsg}`, 'error');
                         failedRecords.push({ ...record, ErrorMessage: errorMsg });
                     }
-                } else {
+                } else if (httpMethod === 'DELETE') {
+                     log(`Processing record with ID ${recordId} for deletion...`, 'info');
+                     try {
+                         const response = await fetch(`${apiEndpoint}/${recordId}`, { method: httpMethod, headers: { 'Authorization': authHeader } });
+                         if (response.ok) {
+                             log(`Success: Record ID ${recordId} deleted successfully.`, 'success');
+                         } else {
+                             const errorText = await response.text();
+                             log(`Error: Failed to delete Record ID ${recordId}. Status: ${response.status}. Message: ${errorText}`, 'error');
+                             failedRecords.push({ ...record, ErrorMessage: errorText });
+                         }
+                     } catch (error) {
+                         const errorMsg = error.message || 'Network error.';
+                         log(`Error: Failed to send DELETE request for Record ID ${recordId}. Message: ${errorMsg}`, 'error');
+                         failedRecords.push({ ...record, ErrorMessage: errorMsg });
+                     }
+                } else { // PUT or POST
                     log(`Processing record for LocationId: ${record.LocationId || 'N/A'}...`, 'info');
                 
                     let businessTimeZoneId;
@@ -866,10 +913,10 @@
                         const { DateTime } = luxon;
                         const format = 'yyyy-MM-dd HH:mm';
                         
-                        log(`    -> DEBUG: Original date string: "${dateString}"`, 'info');
+                        log(`   -> DEBUG: Original date string: "${dateString}"`, 'info');
                         
                         if (DateTime.fromISO(dateString).isValid) {
-                            log(`    -> DEBUG: Date string is already in ISO format. No conversion needed.`, 'info');
+                            log(`   -> DEBUG: Date string is already in ISO format. No conversion needed.`, 'info');
                             return dateString;
                         }
 
@@ -877,13 +924,17 @@
                         
                         if (localDateTime.isValid) {
                             const utcDateTime = localDateTime.toUTC().toISO({ includeOffset: false, suppressMilliseconds: true });
-                            log(`    -> DEBUG: Converting Local Time: "${localDateTime.toFormat(format)}", (Timezone: ${businessTimeZoneId}) to UTC: "${utcDateTime}"`, 'info');
+                            log(`   -> DEBUG: Converting Local Time: "${localDateTime.toFormat(format)}", (Timezone: ${businessTimeZoneId}) to UTC: "${utcDateTime}"`, 'info');
                             return utcDateTime;
                         }
                         
-                        log(`    -> DEBUG: Warning: Failed to convert date string "${dateString}". Sending original value.`, 'error');
+                        log(`   -> DEBUG: Warning: Failed to convert date string "${dateString}". Sending original value.`, 'error');
                         return dateString;
                     };
+
+                    let payload = {};
+                    let fetchOptions = {};
+                    let targetEndpoint = apiEndpoint;
 
                     if (httpMethod === 'PUT') {
                         log(`Fetching existing record for ID ${recordId}...`, 'info');
@@ -897,8 +948,10 @@
                             continue;
                         }
                         payload = mergePayloads(existingRecord, createPayload(record, httpMethod, convertLocalToUtc));
+                        targetEndpoint = `${apiEndpoint}/${recordId}`; // PUT requires ID in the URL
                     } else if (httpMethod === 'POST') {
                         payload = createPayload(record, httpMethod, convertLocalToUtc);
+                        // POST does not include ID in the URL
                     }
                     
                     fetchOptions = {
@@ -911,7 +964,7 @@
                     };
                     
                     try {
-                        const response = await fetch(apiEndpoint, fetchOptions);
+                        const response = await fetch(targetEndpoint, fetchOptions);
                         if (response.ok) {
                             log(`Success: Record ID ${recordId || 'new record'} processed successfully with method ${httpMethod}.`, 'success');
                         } else {
@@ -929,7 +982,7 @@
                 processedCount++;
                 updateProgressBar(processedCount, totalRecords);
 
-                if (processedCount === 1 && isProcessing) {
+                if (processedCount === 1 && isProcessing && !isGetOperation) {
                     isProcessing = false;
                     log('First record processed. Please check the Nexudus Admin Panel to confirm the changes before proceeding. Click "Proceed" to continue or "Stop Processing" to cancel the rest of the batch.', 'info');
                     
@@ -962,62 +1015,47 @@
             }
         }
         
-        function createPayload(record, method, convertLocalToUtcFunc) {
-            const payload = {};
-            for (const key in record) {
-                if (method === 'POST' && key === 'Id') continue;
-                if (record[key] !== null && record[key] !== '') {
-                    const value = record[key];
-
-                    if (dateFields.includes(key)) {
-                        payload[key] = convertLocalToUtcFunc(value);
-                    } else if (arrayFields.includes(key)) {
-                        payload[key] = value.includes(';') ? value.split(';') : [value];
-                    } else if (!isNaN(value) && value.trim() !== '') {
-                        payload[key] = parseFloat(value);
-                    } else if (value.toLowerCase() === 'true' || value.toLowerCase() === 'false') {
-                        payload[key] = value.toLowerCase() === 'true';
-                    } else {
-                        payload[key] = value;
-                    }
-                }
-            }
-            return payload;
-        }
-
-        function downloadFailedRecords() {
-            if (failedRecords.length === 0) return;
-            const allHeaders = Object.keys(failedRecords[0]);
-            const csvRows = [allHeaders.join(',')];
-            for (const record of failedRecords) {
-                const row = Array.from(allHeaders).map(header => {
-                    const value = record[header] || '';
-                    return `"${String(value).replace(/"/g, '""')}"`;
-                });
-                csvRows.push(row.join(','));
-            }
-            const csvString = csvRows.join('\n');
-            const blob = new Blob([csvString], { type: 'text/csv' });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = 'failed_api_updates.csv';
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-            URL.revokeObjectURL(url);
-        }
-
         function endProcessing() {
             log('Processing complete!', 'info');
             isProcessing = false;
             document.getElementById('startButton').disabled = false;
             document.getElementById('stopButton').style.display = 'none';
             document.getElementById('proceedButton').style.display = 'none';
+            document.getElementById('downloadButton').style.display = 'block';
 
-            if (failedRecords.length > 0) {
-                document.getElementById('downloadButton').style.display = 'block';
-                log(`\n${failedRecords.length} record(s) failed to update. Click "Download Failed Records" to get the details.`, 'error');
+            const downloadButton = document.getElementById('downloadButton');
+            
+            if (isGetOperation) {
+                if (fetchedRecords.length > 0) {
+                    downloadButton.textContent = 'Download Results';
+                    downloadButton.onclick = () => downloadResults(fetchedRecords, 'api_get_results.csv');
+                    log(`\nSuccessfully retrieved details for ${fetchedRecords.length} record(s). Click "Download Results" to get the details.`, 'success');
+                } else {
+                    downloadButton.style.display = 'none';
+                    log('\nNo records were successfully retrieved.', 'error');
+                }
+                if (failedRecords.length > 0) {
+                     log(`\n${failedRecords.length} record(s) failed to retrieve. Check the log for details.`, 'error');
+                     downloadButton.textContent += ' & Failed';
+                     const originalOnClick = downloadButton.onclick;
+                     if(originalOnClick) {
+                         downloadButton.onclick = () => {
+                             originalOnClick();
+                             downloadResults(failedRecords.map(r => ({ ...r, FailedReason: r.ErrorMessage })), 'failed_get_requests.csv');
+                         };
+                     } else {
+                         downloadButton.textContent = 'Download Failed Records';
+                         downloadButton.onclick = () => downloadResults(failedRecords.map(r => ({ ...r, FailedReason: r.ErrorMessage })), 'failed_get_requests.csv');
+                     }
+                }
+            } else { // PUT, POST, DELETE
+                downloadButton.textContent = 'Download Failed Records';
+                downloadButton.onclick = () => downloadResults(failedRecords.map(r => ({ ...r, FailedReason: r.ErrorMessage })), 'failed_api_updates.csv');
+                if (failedRecords.length > 0) {
+                    log(`\n${failedRecords.length} record(s) failed to update. Click "Download Failed Records" to get the details.`, 'error');
+                } else {
+                    downloadButton.style.display = 'none';
+                }
             }
         }
         // Initial call to set up the fields based on the default radio button selection
