@@ -318,7 +318,7 @@
         </div>
 
         <!-- Progress Log Section -->
-        <div id="step4" style="display:none;">
+        <div id="step4">
             <h3>4. Progress Log</h3>
             <div id="progressBarContainer">
                 <div id="progressBar"></div>
@@ -410,8 +410,8 @@
                 if (response.ok) {
                     isAuthenticated = true;
                     log('Authentication successful! You can now proceed.', 'success');
-                    document.getElementById('step2and3').style.display = 'block';
-                    document.getElementById('step4').style.display = 'block';
+                    // Step 2 and 3 are now revealed
+                    document.getElementById('step2and3').style.display = 'block'; 
                 } else {
                     isAuthenticated = false;
                     log(`Authentication failed. Status: ${response.status}. Please check your credentials.`, 'error');
@@ -951,7 +951,8 @@
                     let payload = {};
                     if (httpMethod === 'PUT') {
                         log(`Fetching existing record for ID ${recordId}...`, 'info');
-                        const existingRecord = await getRecordData(apiEndpoint, recordId);
+                        // For PUT requests, we fetch the existing record using the ID in the URL for GET
+                        const existingRecord = await getRecordData(apiEndpoint, recordId); 
                         if (!existingRecord) {
                             const errorMsg = `Could not fetch existing record for ID ${recordId}.`;
                             log(`Error: ${errorMsg}`, 'error');
@@ -960,11 +961,13 @@
                             updateProgressBar(processedCount, totalRecords);
                             continue;
                         }
+                        // Then we merge the existing data with the CSV updates, ensuring Id is in the final payload for Nexudus PUT
                         payload = mergePayloads(existingRecord, createPayload(record, httpMethod, convertLocalToUtc));
                     } else { // POST
                         payload = createPayload(record, httpMethod, convertLocalToUtc);
                     }
                     
+                    // POST/PUT requests are sent to the base URL
                     fetchOptions = {
                         method: httpMethod,
                         headers: { 'Content-Type': 'application/json', 'Authorization': authHeader },
