@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Nexudus Internal Update Tool</title>
+    <title>Nexudus Internal Update Tool (Beta)</title>
     <link rel="icon" href="https://nexudusacademy.spaces.nexudus.com//images/Favicon.jpg">
     <!-- Luxon library for timezone handling -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/luxon/3.4.4/luxon.min.js"></script>
@@ -197,6 +197,19 @@
         #authButton {
             margin-top: 15px;
         }
+        /* NEW STYLE FOR HIGHLIGHTED NOTE */
+        .highlight-note {
+            background-color: #fef3f2; /* Light red/pink background */
+            border: 2px solid #fee2e2;
+            padding: 10px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+        .highlight-note strong {
+            color: #732031; /* Use the existing warning text color */
+            font-weight: 700;
+        }
+        /* END NEW STYLE */
     </style>
 </head>
 <body>
@@ -205,46 +218,51 @@
         <div class="logo-container">
             <img src="https://nexudusacademy.spaces.nexudus.com//images/Logo.png?cache=2025-08-08T11:13:58+04:00" alt="Nexudus Logo" class="logo">
         </div>
-        <h1>Nexudus Internal Update Tool</h1>
+        <h1>Nexudus Internal Update Tool (Beta)</h1>
         <p class="warning-text"><i>Please only use this tool if you're confident in doing so. Making changes without full confidence can cause irreversible changes.</i></p>
 
-        <p>This tool reads a CSV file, iterates through each row, and sends a custom API request. Failed updates will be logged and can be exported to a new file at the end.</p>
+        <p>This is a beta internal tool for authorized testers to perform batch API operations (PUT, POST, DELETE, GET) on Nexudus records. It processes a CSV file row-by-row, and all process activity is logged below. Failed records and successful GET results can be exported for review.</p>
 
         <!-- Guide Section -->
         <button id="toggleGuideButton" onclick="toggleGuide()">Show Guide</button>
         <div id="updateGuide" class="collapsible-content">
             <h4>How to Use This Tool:</h4>
-            <p>This tool can currently be used for Updating and Creating records.</p>
+            <p>This tool can currently be used for <strong>Updating</strong>, <strong>Creating</strong>, <strong>Deleting</strong>, and <strong>Getting</strong> records.</p>
             <br>
-            <h5>Update:</h5>
+            
+            <h5>Update (`PUT`):</h5>
             <ol>
-                <li><b>Export the existing records:</b> From the Nexudus Admin Panel, export the current records. This file is crucial because it contains the <b>`Id`</b> field, which tells the tool exactly which records to update.</li>
-                <li><b>Prepare your file:</b> Clean the export file by removing any columns you will not be updating. You only need to keep the `Id` and the columns with the new data.</li>
-                <li><b>Add updated data:</b> Add the column headers for the fields you want to change. For example, if you need to update the `BillingDay` for a list of Contracts, your CSV should include a `BillingDay` column. You can find all possible column headers in the Nexudus API documentation at `developers.nexudus.com`.</li>
-                <li><b>Format data correctly:</b>
+                <li><strong>Export the existing records:</strong> From the Nexudus Admin Panel, export the current records. This file is crucial because it contains the <strong><code>Id</code></strong> field, which tells the tool exactly which records to update.</li>
+                <li><strong>Prepare your file:</strong> Clean the export file by removing any columns you will not be updating. You only need to keep the `Id` and the columns with the new data.</li>
+                <li><strong>Add updated data:</strong> Add the column headers for the fields you want to change. For example, if you need to update the `BillingDay` for a list of Contracts, your CSV should include a `BillingDay` column. You can find all possible column headers in the Nexudus API documentation at `developers.nexudus.com`.</li>
+                <li><strong>Format data correctly:</strong>
                     <ul>
-                        <li><b>Lists of items</b> will be correctly processed as a JSON array, but only if they are separated by a <b>semicolon (;)</b>. Do not use a comma to separate lists! For example, `Desks: Desk1;Desk2`.</li>
-                        <li><b>Dates</b> should be formatted in UTC as `yyyy-mm-dd hh:mm`. The tool will handle the conversion to the correct API format.</li>
+                        <li><strong>Lists of items</strong> will be correctly processed as a JSON array, but only if they are separated by a <strong>semicolon (;)</strong>. Do not use a comma to separate lists! For example, `Desks: Desk1;Desk2`.</li>
+                        <li><strong>Dates</strong> should be formatted in UTC as `yyyy-mm-dd hh:mm`. The tool will handle the conversion to the correct API format.</li>
                     </ul>
                 </li>
             </ol>
             <br>
-            <h5>Create:</h5>
-            <p>The process for creating new records is the same as above, but you <b>do not need to include the `Id`</b> in your CSV. Ensure all other fields are completed.</p>
+            
+            <h5>Create (`POST`):</h5>
+            <p>The process for creating new records is the same as above, but you <strong>do not need to include the <code>Id</code></strong> in your CSV. Ensure all other fields are completed.</p>
             <br>
-            <h5>Get (New!):</h5>
-            <p>To retrieve full record details, select the `GET` method. Your CSV file should contain only a single column named `Id` with the IDs of the records you wish to retrieve. The tool will download a new CSV with the full details of all successful requests.</p>
+            
+            <h5>Get (`GET`):</h5>
+            <p>To retrieve full record details, select the `GET` method. Your CSV file should contain only a single column named <strong><code>Id</code></strong> with the IDs of the records you wish to retrieve. The tool will download a new CSV with the full details of all successful requests.</p>
         </div>
 
         <!-- Authentication Section -->
         <h3>1. Authentication</h3>
-        <p>Choose your authentication method and enter your credentials. This information is not stored.</p>
-        <div class="form-group-inline">
+        <p>Enter the username and password for the Nexudus account you are making updates to. You should use the admin account that was created for you based on the access code log in, and then perform a forgotten password to obtain the password.</p>
+        <div class="form-group-inline" style="display: none;"> <!-- HIDDEN AUTH METHOD CHOICE -->
             <label for="authMethod">Auth Method:</label>
             <input type="radio" id="authMethodBasic" name="authMethod" value="basic" checked onchange="toggleAuthFields()">
             <label for="authMethodBasic">Basic Auth</label>
-            <input type="radio" id="authMethodOAuth" name="authMethod" value="oauth2" onchange="toggleAuthFields()">
-            <label for="authMethodOAuth">OAuth2</label>
+            <span id="oauthToggleContainer" style="display: none;">
+                <input type="radio" id="authMethodOAuth" name="authMethod" value="oauth2" onchange="toggleAuthFields()">
+                <label for="authMethodOAuth">OAuth2</label>
+            </span>
         </div>
         <div id="basicAuthFields">
             <label for="username" class="font-medium text-gray-700">Username:</label>
@@ -308,6 +326,9 @@
             
             <!-- File Upload and Action Section -->
             <h3>3. Upload CSV & Run</h3>
+            <p class="highlight-note">
+                <strong>Important:</strong> All upload files must include the **LocationId** column, with the Nexudus Location ID where the record sits.
+            </p>
             <p>Upload the CSV file. The tool will use the 'Id' column to identify the record and all other columns to form the update payload.</p>
             <input type="file" id="csvFile" accept=".csv">
             <br><br>
@@ -317,9 +338,9 @@
             <button id="downloadButton" style="display: none;"></button>
         </div>
 
-        <!-- Progress Log Section -->
+        <!-- Progress Log Section (Now always visible) -->
         <div id="step4">
-            <h3>4. Progress Log</h3>
+            <h3>Progress Log</h3>
             <div id="progressBarContainer">
                 <div id="progressBar"></div>
             </div>
@@ -368,9 +389,12 @@
                 logElement.scrollTop = logElement.scrollHeight;
             }
         }
+        
+        // The timezone test function has been removed as requested.
 
         async function setAuthHeader() {
-            const authMethod = document.querySelector('input[name="authMethod"]:checked').value;
+            // Since auth method choice is hidden, we assume basic auth is the default and only choice.
+            const authMethod = 'basic'; // Hardcoding to basic since choice is hidden.
             if (authMethod === 'basic') {
                 const username = document.getElementById('username').value;
                 const password = document.getElementById('password').value;
@@ -409,7 +433,7 @@
 
                 if (response.ok) {
                     isAuthenticated = true;
-                    log('Authentication successful! You can now proceed.', 'success');
+                    log('Authentication successful! You can now proceed to Step 2.', 'success');
                     // Step 2 and 3 are now revealed
                     document.getElementById('step2and3').style.display = 'block'; 
                 } else {
@@ -425,17 +449,12 @@
         }
         
         function checkAuthButtonValidity() {
-            const authMethod = document.querySelector('input[name="authMethod"]:checked').value;
+            // Since auth method is hidden, we explicitly check only basic fields
             const authButton = document.getElementById('authButton');
-            let isAuthProvided = false;
-            if (authMethod === 'basic') {
-                const usernameInput = document.getElementById('username');
-                const passwordInput = document.getElementById('password');
-                isAuthProvided = usernameInput.value !== '' && passwordInput.value !== '';
-            } else if (authMethod === 'oauth2') {
-                const oauth2TokenInput = document.getElementById('oauth2Token');
-                isAuthProvided = oauth2TokenInput.value !== '';
-            }
+            const usernameInput = document.getElementById('username');
+            const passwordInput = document.getElementById('password');
+            const isAuthProvided = usernameInput.value !== '' && passwordInput.value !== '';
+            
             authButton.disabled = !isAuthProvided;
         }
 
@@ -459,17 +478,12 @@
         
         // Toggles visibility of auth fields based on radio button selection
         function toggleAuthFields() {
-            const authMethod = document.querySelector('input[name="authMethod"]:checked').value;
+            // The logic here is simplified as only basic auth fields are visible in the HTML now.
             const basicAuthDiv = document.getElementById('basicAuthFields');
             const oauth2AuthDiv = document.getElementById('oauth2AuthFields');
             
-            if (authMethod === 'basic') {
-                basicAuthDiv.style.display = 'block';
-                oauth2AuthDiv.style.display = 'none';
-            } else if (authMethod === 'oauth2') {
-                basicAuthDiv.style.display = 'none';
-                oauth2AuthDiv.style.display = 'block';
-            }
+            basicAuthDiv.style.display = 'block';
+            oauth2AuthDiv.style.display = 'none';
             checkAuthButtonValidity();
         }
 
@@ -568,8 +582,6 @@
                 }
                 const businessData = await businessResponse.json();
                 
-                log(`Full Business API response for Location ID ${locationId}:\n${JSON.stringify(businessData, null, 2)}`, 'info');
-                
                 const simpleTimeZoneId = businessData.SimpleTimeZoneId;
                 
                 if (!simpleTimeZoneId) {
@@ -592,14 +604,13 @@
                     throw new Error('Could not find Iana identifier in timezone details.');
                 }
 
-                log(`Successfully retrieved SimpleTimeZoneId: ${simpleTimeZoneId} for Location ID: ${locationId}`, 'success');
-                log(`Resolved to IANA timezone: ${timezoneData.Iana}`, 'success');
+                log(`Timezone found for Location ID ${locationId}: ${timezoneData.Iana}`, 'info');
                 
                 businessTimeZoneCache[locationId] = timezoneData.Iana;
                 return timezoneData.Iana;
 
             } catch (error) {
-                log(`Error: ${error.message}`, 'error');
+                log(`Error fetching timezone data for location ${locationId}: ${error.message}`, 'error');
                 return null;
             }
         }
@@ -939,7 +950,9 @@
                     const convertLocalToUtc = (dateString) => {
                         const { DateTime } = luxon;
                         const format = 'yyyy-MM-dd HH:mm';
+                        // If already ISO, skip conversion
                         if (DateTime.fromISO(dateString).isValid) { return dateString; }
+                        
                         const localDateTime = DateTime.fromFormat(dateString, format, { zone: businessTimeZoneId });
                         if (localDateTime.isValid) {
                             const utcDateTime = localDateTime.toUTC().toISO({ includeOffset: false, suppressMilliseconds: true });
@@ -951,7 +964,7 @@
                     let payload = {};
                     if (httpMethod === 'PUT') {
                         log(`Fetching existing record for ID ${recordId}...`, 'info');
-                        // For PUT requests, we fetch the existing record using the ID in the URL for GET
+                        // Fetch the existing record using the ID in the URL (standard GET behavior)
                         const existingRecord = await getRecordData(apiEndpoint, recordId); 
                         if (!existingRecord) {
                             const errorMsg = `Could not fetch existing record for ID ${recordId}.`;
@@ -961,7 +974,7 @@
                             updateProgressBar(processedCount, totalRecords);
                             continue;
                         }
-                        // Then we merge the existing data with the CSV updates, ensuring Id is in the final payload for Nexudus PUT
+                        // Merge existing data with CSV updates, sending the entire object to the base URL (Nexudus PUT pattern)
                         payload = mergePayloads(existingRecord, createPayload(record, httpMethod, convertLocalToUtc));
                     } else { // POST
                         payload = createPayload(record, httpMethod, convertLocalToUtc);
