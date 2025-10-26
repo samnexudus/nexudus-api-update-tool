@@ -248,6 +248,12 @@
             <p>The process for creating new records is the same as above, but you <strong>do not need to include the <code>Id</code></strong> in your CSV. Ensure all other fields are completed.</p>
             <br>
             
+            <h5>Delete (`DELETE`):</h5>
+            <p>This method attempts to permanently delete a record using its `Id` in the URL. <strong>Warning:</strong> Many critical Nexudus endpoints (e.g., Coworkers, Contracts) do not support <code>DELETE</code> and will return a "405 Method Not Allowed" error.</p>
+            <p><strong>Note on Coworkers:</strong> If you select **`Customers`** and **`DELETE`**, the tool automatically uses the **`POST /runcommand`** endpoint with the **`COWORKER_DELETE`** key to perform the soft-deletion, matching the expected API pattern.</p>
+            <p>For all other records, use the `DELETE` method only if you have confirmed through the Nexudus API documentation that the specific endpoint supports hard deletion.</p>
+            <br>
+            
             <h5>Get (`GET`):</h5>
             <p>To retrieve full record details, select the `GET` method. Your CSV file should contain only a single column named <strong><code>Id</code></strong> with the IDs of the records you wish to retrieve. The tool will download a new CSV with the full details of all successful requests.</p>
         </div>
@@ -920,10 +926,33 @@
                 let targetEndpoint = apiEndpoint;
                 let fetchOptions = {};
                 
-                if (httpMethod === 'GET' || httpMethod === 'DELETE') {
+                if (httpMethod === 'GET') {
                     targetEndpoint = `${apiEndpoint}/${recordId}`;
                     fetchOptions = { method: httpMethod, headers: { 'Authorization': authHeader } };
-                } else if (httpMethod === 'PUT' || httpMethod === 'POST') {
+                } 
+                // START NEW DELETE LOGIC BLOCK
+                else if (httpMethod === 'DELETE') {
+                    // Check if it's the known runcommand endpoint for Coworkers
+                    if (apiEndpoint.endsWith('/api/spaces/coworkers')) {
+                        // Override to POST runcommand pattern
+                        targetEndpoint = `${apiEndpoint}/runcommand`;
+                        fetchOptions = {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json', 'Authorization': authHeader },
+                            body: JSON.stringify({
+                                Ids: [parseInt(recordId)],
+                                Key: 'COWORKER_DELETE'
+                            })
+                        };
+                        log(`Processing Coworker ID ${recordId} for deletion via POST runcommand...`, 'info');
+                    } else {
+                        // Fallback to standard DELETE /{id} for all other endpoints
+                        targetEndpoint = `${apiEndpoint}/${recordId}`;
+                        fetchOptions = { method: httpMethod, headers: { 'Authorization': authHeader } };
+                    }
+                } 
+                // END NEW DELETE LOGIC BLOCK
+                else if (httpMethod === 'PUT' || httpMethod === 'POST') {
                     if (!record['LocationId']) {
                         log(`Error: Skipping record as 'LocationId' is required for this method.`, 'error');
                         failedRecords.push({ ...record, ErrorMessage: 'LocationId is required for this method.' });
