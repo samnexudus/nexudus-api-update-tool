@@ -230,32 +230,32 @@
             <p>This tool can currently be used for <strong>Updating</strong>, <strong>Creating</strong>, <strong>Deleting</strong>, and <strong>Getting</strong> records.</p>
             <br>
             
-            <h5>Update (`PUT`):</h5>
+            <h5>Update (<code>PUT</code>):</h5>
             <ol>
                 <li><strong>Export the existing records:</strong> From the Nexudus Admin Panel, export the current records. This file is crucial because it contains the <strong><code>Id</code></strong> field, which tells the tool exactly which records to update.</li>
-                <li><strong>Prepare your file:</strong> Clean the export file by removing any columns you will not be updating. You only need to keep the `Id` and the columns with the new data.</li>
-                <li><strong>Add updated data:</strong> Add the column headers for the fields you want to change. For example, if you need to update the `BillingDay` for a list of Contracts, your CSV should include a `BillingDay` column. You can find all possible column headers in the Nexudus API documentation at `developers.nexudus.com`.</li>
+                <li><strong>Prepare your file:</strong> Clean the export file by removing any columns you will not be updating. You only need to keep the <code>Id</code> and the columns with the new data.</li>
+                <li><strong>Add updated data:</strong> Add the column headers for the fields you want to change. For example, if you need to update the <code>BillingDay</code> for a list of Contracts, your CSV should include a <code>BillingDay</code> column. You can find all possible column headers in the Nexudus API documentation at <code>developers.nexudus.com</code>.</li>
                 <li><strong>Format data correctly:</strong>
                     <ul>
-                        <li><strong>Lists of items</strong> will be correctly processed as a JSON array, but only if they are separated by a <strong>semicolon (;)</strong>. Do not use a comma to separate lists! For example, `Desks: Desk1;Desk2`.</li>
-                        <li><strong>Dates</strong> should be formatted in UTC as `yyyy-mm-dd hh:mm`. The tool will handle the conversion to the correct API format.</li>
+                        <li><strong>Lists of items</strong> will be correctly processed as a JSON array, but only if they are separated by a <strong>semicolon (;)</strong>. Do not use a comma to separate lists! For example, <code>Desks: Desk1;Desk2</code>.</li>
+                        <li><strong>Dates</strong> should be formatted in UTC as <code>yyyy-mm-dd hh:mm</code>. The tool will handle the conversion to the correct API format.</li>
                     </ul>
                 </li>
             </ol>
             <br>
             
-            <h5>Create (`POST`):</h5>
+            <h5>Create (<code>POST</code>):</h5>
             <p>The process for creating new records is the same as above, but you <strong>do not need to include the <code>Id</code></strong> in your CSV. Ensure all other fields are completed.</p>
             <br>
             
-            <h5>Delete (`DELETE`):</h5>
-            <p>This method attempts to permanently delete a record using its `Id` in the URL. <strong>Warning:</strong> Many critical Nexudus endpoints (e.g., Coworkers, Contracts) do not support <code>DELETE</code> and will return a "405 Method Not Allowed" error.</p>
-            <p><strong>Note on Coworkers:</strong> If you select **`Customers`** and **`DELETE`**, the tool automatically uses the **`POST /runcommand`** endpoint with the **`COWORKER_DELETE`** key to perform the soft-deletion, matching the expected API pattern.</p>
-            <p>For all other records, use the `DELETE` method only if you have confirmed through the Nexudus API documentation that the specific endpoint supports hard deletion.</p>
+            <h5>Delete (<code>DELETE</code>):</h5>
+            <p>This method attempts to permanently delete a record using its <code>Id</code> in the URL. <strong>Warning:</strong> Many critical Nexudus endpoints (e.g., Contracts) do not support <code>DELETE</code> and will return a "405 Method Not Allowed" error.</p>
+            <p><strong>Note on Coworkers:</strong> If you select <strong><code>Customers</code></strong> and <strong><code>DELETE</code></strong>, the tool automatically uses the **<code>POST /runcommand</code>** endpoint with the **<code>COWORKER_DELETE</code>** key to perform the soft-deletion, matching the expected API pattern.</p>
+            <p>For all other records, use the <code>DELETE</code> method only if you have confirmed through the Nexudus API documentation that the specific endpoint supports hard deletion.</p>
             <br>
             
-            <h5>Get (`GET`):</h5>
-            <p>To retrieve full record details, select the `GET` method. Your CSV file should contain only a single column named <strong><code>Id</code></strong> with the IDs of the records you wish to retrieve. The tool will download a new CSV with the full details of all successful requests.</p>
+            <h5>Get (<code>GET</code>):</h5>
+            <p>To retrieve full record details, select the <code>GET</code> method. Your CSV file should contain only a single column named <strong><code>Id</code></strong> with the IDs of the records you wish to retrieve. The tool will download a new CSV with the full details of all successful requests.</p>
         </div>
 
         <!-- Authentication Section -->
@@ -396,10 +396,7 @@
             }
         }
         
-        // The timezone test function has been removed as requested.
-
         async function setAuthHeader() {
-            // Since auth method choice is hidden, we assume basic auth is the default and only choice.
             const authMethod = 'basic'; // Hardcoding to basic since choice is hidden.
             if (authMethod === 'basic') {
                 const username = document.getElementById('username').value;
@@ -455,7 +452,6 @@
         }
         
         function checkAuthButtonValidity() {
-            // Since auth method is hidden, we explicitly check only basic fields
             const authButton = document.getElementById('authButton');
             const usernameInput = document.getElementById('username');
             const passwordInput = document.getElementById('password');
@@ -482,9 +478,7 @@
             }
         }
         
-        // Toggles visibility of auth fields based on radio button selection
         function toggleAuthFields() {
-            // The logic here is simplified as only basic auth fields are visible in the HTML now.
             const basicAuthDiv = document.getElementById('basicAuthFields');
             const oauth2AuthDiv = document.getElementById('oauth2AuthFields');
             
@@ -564,8 +558,7 @@
 
         /**
          * Fetches the IANA timezone identifier for a given location.
-         * @param {string} locationId - The location ID from the CSV file.
-         * @returns {string|null} The IANA timezone identifier (e.g., 'America/New_York') or null on failure.
+         * ... (Rest of function remains unchanged)
          */
         async function getBusinessTimeZoneByLocation(locationId) {
             if (businessTimeZoneCache[locationId]) {
@@ -666,22 +659,105 @@
             return { ...basePayload, ...updatePayload };
         }
 
+        // START REVISED parseCSV FUNCTION TO HANDLE MULTI-LINE FIELDS
         function parseCSV(csvText) {
-            const lines = csvText.split('\n').filter(line => line.trim() !== '');
-            if (lines.length < 2) return { headers: [], records: [] };
-            const headers = lines[0].split(',').map(header => header.trim());
+            const lines = csvText.split('\n');
+            if (lines.length < 1) return { headers: [], records: [] };
+            
+            let currentLine = '';
+            let inQuotes = false;
+            const logicalLines = [];
+
+            // 1. Re-assemble physical lines into logical records based on quotes
+            for (const line of lines) {
+                // Count quotes and handle escaped quotes ("")
+                let quoteCount = 0;
+                for (let i = 0; i < line.length; i++) {
+                    if (line[i] === '"') {
+                        if (i + 1 < line.length && line[i + 1] === '"') {
+                            i++; // Skip the next character if it's an escaped quote
+                        } else {
+                            quoteCount++;
+                        }
+                    }
+                }
+                
+                if (inQuotes) {
+                    // Append the line, adding a newline character back since we stripped it with split('\n')
+                    currentLine += '\n' + line; 
+                    if (quoteCount % 2 !== 0) {
+                         inQuotes = false; // End of multi-line quoted field
+                    }
+                } else {
+                    currentLine = line;
+                    if (quoteCount % 2 !== 0) {
+                        inQuotes = true; // Start of multi-line quoted field
+                    }
+                }
+
+                // If quotes are balanced (or we are not in quotes), push the complete logical line
+                if (!inQuotes) {
+                    if (currentLine.trim()) {
+                        logicalLines.push(currentLine.trim());
+                    }
+                    currentLine = '';
+                }
+            }
+            
+            // Handle any final remnants
+            if (currentLine.trim()) {
+                 logicalLines.push(currentLine.trim());
+            }
+
+            const cleanLines = logicalLines.filter(line => line !== '');
+            if (cleanLines.length < 1) return { headers: [], records: [] };
+            
+            // 2. Parse the fields in the logical lines
+            const parseLineFields = (line) => {
+                const values = [];
+                let current = '';
+                let inQuotes = false;
+                for (let i = 0; i < line.length; i++) {
+                    const char = line[i];
+
+                    if (char === '"') {
+                        // Handle escaped double quotes (CSV standard: "")
+                        if (inQuotes && line[i + 1] === '"') {
+                            current += '"';
+                            i++;
+                        } else {
+                            inQuotes = !inQuotes;
+                        }
+                    } else if (char === ',' && !inQuotes) {
+                        values.push(current.trim().replace(/^"|"$/g, '')); // Remove surrounding quotes during push
+                        current = '';
+                    } else {
+                        current += char;
+                    }
+                }
+                // Push the last value, removing any residual surrounding quotes
+                values.push(current.trim().replace(/^"|"$/g, '')); 
+                return values;
+            };
+
+            const headers = parseLineFields(cleanLines[0]).map(header => header.trim());
             const records = [];
-            for (let i = 1; i < lines.length; i++) {
-                const line = lines[i];
-                const values = line.split(',').map(value => value.trim());
+            
+            for (let i = 1; i < cleanLines.length; i++) {
+                const line = cleanLines[i];
+                const values = parseLineFields(line);
                 const record = {};
+                
                 for (let j = 0; j < headers.length; j++) {
-                    record[headers[j]] = values[j] || null;
+                    // Only assign if value exists for the header
+                    record[headers[j]] = values[j] !== undefined ? values[j] : null;
                 }
                 records.push(record);
             }
+            
             return { headers, records };
         }
+        // END REVISED parseCSV FUNCTION
         
         function createPayload(record, method, convertLocalToUtcFunc) {
             const payload = {};
@@ -924,20 +1000,22 @@
                 }
 
                 let targetEndpoint = apiEndpoint;
+                let finalHttpMethod = httpMethod;
                 let fetchOptions = {};
                 
                 if (httpMethod === 'GET') {
                     targetEndpoint = `${apiEndpoint}/${recordId}`;
-                    fetchOptions = { method: httpMethod, headers: { 'Authorization': authHeader } };
+                    fetchOptions = { method: finalHttpMethod, headers: { 'Authorization': authHeader } };
                 } 
-                // START NEW DELETE LOGIC BLOCK
                 else if (httpMethod === 'DELETE') {
                     // Check if it's the known runcommand endpoint for Coworkers
                     if (apiEndpoint.endsWith('/api/spaces/coworkers')) {
                         // Override to POST runcommand pattern
+                        finalHttpMethod = 'POST';
                         targetEndpoint = `${apiEndpoint}/runcommand`;
+
                         fetchOptions = {
-                            method: 'POST',
+                            method: finalHttpMethod,
                             headers: { 'Content-Type': 'application/json', 'Authorization': authHeader },
                             body: JSON.stringify({
                                 Ids: [parseInt(recordId)],
@@ -948,10 +1026,9 @@
                     } else {
                         // Fallback to standard DELETE /{id} for all other endpoints
                         targetEndpoint = `${apiEndpoint}/${recordId}`;
-                        fetchOptions = { method: httpMethod, headers: { 'Authorization': authHeader } };
+                        fetchOptions = { method: finalHttpMethod, headers: { 'Authorization': authHeader } };
                     }
                 } 
-                // END NEW DELETE LOGIC BLOCK
                 else if (httpMethod === 'PUT' || httpMethod === 'POST') {
                     if (!record['LocationId']) {
                         log(`Error: Skipping record as 'LocationId' is required for this method.`, 'error');
@@ -1011,7 +1088,7 @@
                     
                     // POST/PUT requests are sent to the base URL
                     fetchOptions = {
-                        method: httpMethod,
+                        method: finalHttpMethod,
                         headers: { 'Content-Type': 'application/json', 'Authorization': authHeader },
                         body: JSON.stringify(payload)
                     };
