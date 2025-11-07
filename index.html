@@ -175,6 +175,12 @@
                 <path strokeLinecap="round" strokeLinejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
             </svg>
         );
+        // New Help Icon
+        const HelpIcon = () => (
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-1.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.79 4 4 0 1.152-.468 2.19-1.228 2.969-.76.778-1.79 1.28-2.772 1.378A1 1 0 0112 15v.01M12 18h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+        );
 
         // --- Reusable Form Components ---
         const InputField = ({ id, label, type, value, onChange, placeholder, icon, disabled = false }) => (
@@ -218,6 +224,18 @@
                     {children}
                 </select>
             </div>
+        );
+        
+        // New Tooltip Component
+        const ExpertTooltip = ({ onBookCall }) => (
+            <button
+                type="button"
+                onClick={onBookCall}
+                className="absolute top-0 right-0 -mt-4 sm:-mt-6 flex items-center text-sm font-medium text-gray-600 hover:text-nex-orange transition-colors"
+            >
+                <HelpIcon />
+                Speak to an expert
+            </button>
         );
 
         // --- API Fetching Functions ---
@@ -325,42 +343,7 @@
          * Stage 2: Onboarding Choice
          */
         const OnboardingChoiceStage = ({ onChoice, onBack }) => {
-            const [showCalendly, setShowCalendly] = useState(false);
-
-            if (showCalendly) {
-                return (
-                    <React.Fragment>
-                        <div className="flex items-center space-x-3">
-                            <CalendarIcon />
-                            <h2 className="text-2xl font-semibold text-gray-800">Book your call</h2>
-                        </div>
-                        <p className="mt-2 text-sm text-gray-600">
-                    Find a time that works for you and our team will take the lead.
-                </p>
-                
-                {/* Calendly embed - reduced height */}
-                <div className="mt-6" style={{ height: '650px', overflow: 'hidden' }}>
-                    <iframe
-                        src="https://calendly.com/sam-nexudus/sam-nexudus-60mins-aus"
-                        width="100%"
-                        height="650"
-                        frameBorder="0"
-                    ></iframe>
-                </div>
-
-                <div className="flex justify-start pt-8">
-                            <button
-                                type="button"
-                                onClick={() => setShowCalendly(false)}
-                                className="flex w-full justify-center rounded-md border border-gray-300 bg-white py-3 px-4 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-gray-400 focus:ring-offset-2 sm:w-auto"
-                            >
-                                &larr; Back to Choices
-                            </button>
-                        </div>
-                    </React.Fragment>
-                );
-            }
-
+            // Calendly is no longer shown here, it's moved to Stage 7
             return (
                 <React.Fragment>
                     <div className="flex items-center space-x-3">
@@ -414,7 +397,7 @@
                             </p>
                             <button
                                 type="button"
-                                onClick={() => setShowCalendly(true)}
+                                onClick={() => onChoice(7)} // Go to Stage 7 (Calendly)
                                 className="mt-6 rounded-md bg-gray-600 py-2 px-4 text-sm font-medium text-white hover:bg-gray-700"
                             >
                                 Book a Call
@@ -875,7 +858,7 @@
             }
 
             return (
-                <>
+                <React.Fragment>
                     <div className="flex items-center space-x-3">
                         <BillingIcon />
                         <h2 className="text-2xl font-semibold text-gray-800">Step 6: Billing Settings</h2>
@@ -938,14 +921,50 @@
                             </button>
                         </div>
                     </form>
-                </>
+                </React.Fragment>
             );
         };
+        
+        /**
+         * Stage 7: Calendly Booking
+         */
+        const CalendlyStage = ({ onBack }) => (
+            <>
+                <div className="flex items-center space-x-3">
+                    <CalendarIcon />
+                    <h2 className="text-2xl font-semibold text-gray-800">Book your call</h2>
+                </div>
+                <p className="mt-2 text-sm text-gray-600">
+                    Find a time that works for you and our team will take the lead.
+                </p>
+                
+                {/* Calendly embed - reduced height */}
+                <div className="mt-6" style={{ height: '650px', overflow: 'hidden' }}>
+                    <iframe
+                        src="https://calendly.com/sam-nexudus/sam-nexudus-60mins-aus"
+                        width="100%"
+                        height="650"
+                        frameBorder="0"
+                    ></iframe>
+                </div>
+
+                <div className="flex justify-start pt-8">
+                    <button
+                        type="button"
+                        onClick={onBack}
+                        className="flex w-full justify-center rounded-md border border-gray-300 bg-white py-3 px-4 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-gray-400 focus:ring-offset-2 sm:w-auto"
+                    >
+                        &larr; Back to Wizard
+                    </button>
+                </div>
+            </>
+        );
 
 
 // --- Main App Component ---
         function App() {
-            const [stage, setStage] = useState(1); // 1: Welcome, 2: Choice, 3: Auth, 4: Select, 5: Times, 6: Billing
+            const [stage, setStage] = useState(1); // 1: Welcome, 2: Choice, 3: Auth, 4: Select, 5: Times, 6: Billing, 7: Calendly
+            const [previousStage, setPreviousStage] = useState(1);
             const [authData, setAuthData] = useState({ email: "", password: "" });
             const [businesses, setBusinesses] = useState([]);
             const [selectedBusinessId, setSelectedBusinessId] = useState(null);
@@ -959,6 +978,11 @@
             const handleSelectBusiness = (businessId) => {
                 setSelectedBusinessId(businessId);
                 setStage(5); // Go to Opening Times
+            };
+            
+            const handleBookCall = () => {
+                setPreviousStage(stage); // Store current stage
+                setStage(7); // Go to Calendly
             };
 
             const renderStage = () => {
@@ -991,17 +1015,19 @@
                         stageContent = <BillingSettingsStage businessId={selectedBusinessId} authData={authData} onBack={() => setStage(5)} />; // Go to Opening Times
                         maxWidth = "max-w-2xl"; // Billing stage is narrow
                         break;
+                    case 7: // New Calendly Stage
+                        stageContent = <CalendlyStage onBack={() => setStage(previousStage)} />;
+                        maxWidth = "max-w-5xl"; // Calendly embed needs to be wide
+                        break;
                     default:
                         stageContent = <p>Error: Unknown stage.</p>;
                         maxWidth = "max-w-lg";
                 }
                 
-                return (
-                    <div className={`mx-auto ${maxWidth}`}>
-                        {stageContent}
-                    </div>
-                );
+                return { stageContent, maxWidth }; // Return as object
             };
+            
+            const { stageContent, maxWidth } = renderStage();
 
             return (
                 // Changed items-center to items-start and added padding-top
@@ -1020,8 +1046,18 @@
                                 Onboarding Wizard
                             </h1>
                             
-                            {/* The renderStage function now controls the width */}
-                            {renderStage()}
+                            {/* Main Content Area with Tooltip */}
+                            <div className="relative">
+                                {/* Show tooltip on guided flow stages (3, 4, 5, 6) */}
+                                {stage >= 3 && stage <= 6 && (
+                                    <ExpertTooltip onBookCall={handleBookCall} />
+                                )}
+                                
+                                {/* The renderStage function now returns the content */}
+                                <div className={`mx-auto ${maxWidth}`}>
+                                    {stageContent}
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
