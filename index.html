@@ -1,1072 +1,1203 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Onboarding Wizard</title>
-    <!-- 1. Load Tailwind CSS -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    
-    <!-- 2. Load React & Babel -->
-    <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
-    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
-    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-
-    <!-- 3. Custom Styles & Tailwind Config -->
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nexudus Internal Update Tool (Beta)</title>
+    <link rel="icon" href="https://nexudusacademy.spaces.nexudus.com//images/Favicon.jpg">
+    <!-- Luxon library for timezone handling -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/luxon/3.4.4/luxon.min.js"></script>
     <style>
-        :root {
-            --nex-orange: #FE4D00;
-            --nex-orange-dark: #E04400;
-            --nex-blue: #212C6A;
-        }
-        .bg-nex-orange { background-color: var(--nex-orange); }
-        .hover\:bg-nex-orange-dark:hover { background-color: var(--nex-orange-dark); }
-        .text-nex-orange { color: var(--nex-orange); }
-        .border-nex-orange { border-color: var(--nex-orange); }
-        .ring-nex-orange { --tw-ring-color: var(--nex-orange); }
-        .focus\:border-nex-orange:focus { border-color: var(--nex-orange); }
-        .focus\:ring-nex-orange:focus { --tw-ring-color: var(--nex-orange); }
-        .text-nex-blue { color: var(--nex-blue); }
+        @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600&family=Poppins:wght@400;600&display=swap');
         
-        /* Custom Toggle Switch Style */
-        .toggle-checkbox {
-            appearance: none;
-            -webkit-appearance: none;
-            position: relative;
-            width: 44px; /* w-11 */
-            height: 24px; /* h-6 */
-            border-radius: 9999px; /* rounded-full */
-            background-color: #E5E7EB; /* bg-gray-300 */
-            transition: background-color 0.2s ease-in-out;
+        body { 
+            font-family: 'Poppins', sans-serif; 
+            padding: 20px; 
+            background-color: #f8f8f8; 
+        }
+        .container { 
+            max-width: 800px; 
+            margin: 0 auto; 
+            background-color: white; 
+            padding: 30px; 
+            border-radius: 12px; 
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1); 
+        }
+        h1, h3 { 
+            font-family: 'Playfair Display', serif;
+            font-weight: 600;
+            color: #001279; 
+        }
+        h1 { font-size: 2rem; margin-bottom: 0.5rem; }
+        h3 { font-size: 1.25rem; margin-top: 2rem; margin-bottom: 0.75rem; }
+        p { color: #4b5563; line-height: 1.5; }
+        .warning-text {
+            color: #732031;
+            font-weight: 600;
+            font-style: italic;
+            margin-bottom: 20px;
+        }
+        input[type="text"], input[type="password"] {
+            width: 100%;
+            padding: 10px;
+            margin-top: 5px;
+            margin-bottom: 15px;
+            border: 1px solid #d1d5db;
+            border-radius: 8px;
+            box-sizing: border-box;
+            transition: all 0.2s ease;
+            height: 40px; /* Consistent height */
+        }
+        input[type="text"]:focus, input[type="password"]:focus {
+            outline: none;
+            border-color: #001279;
+            box-shadow: 0 0 0 3px #16289B;
+        }
+        input[type="file"] {
+            display: block;
+            margin-top: 10px;
+        }
+        button {
+            color: white;
+            padding: 8px 15px;
+            border: none;
+            border-radius: 8px;
             cursor: pointer;
+            font-size: 1rem;
+            font-weight: 600;
+            transition: background-color 0.2s ease;
+            height: 40px; /* Consistent height */
+            box-sizing: border-box;
         }
-        .toggle-checkbox:checked {
-            background-color: var(--nex-orange);
+        select {
+            height: 40px; /* Consistent height */
+            padding: 8px 10px;
+            margin-top: 5px;
+            margin-bottom: 15px;
+            border: 1px solid #d1d5db;
+            border-radius: 8px;
+            box-sizing: border-box;
+            width: 100%;
         }
-        .toggle-checkbox::before {
-            content: '';
-            position: absolute;
-            top: 2px;
-            left: 2px;
-            width: 20px; /* h-5 w-5 */
-            height: 20px; /* h-5 w-5 */
-            border-radius: 9999px; /* rounded-full */
-            background-color: white;
-            box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05); /* shadow */
-            transition: transform 0.2s ease-in-out;
+        #startButton {
+            background-color: #FF5100;
         }
-        .toggle-checkbox:checked::before {
-            transform: translateX(20px); /* translate-x-5 */
+        #startButton:hover {
+            background-color: #BF3700;
         }
-        .toggle-checkbox:disabled {
-            background-color: #F3F4F6; /* bg-gray-100 */
-            cursor: not-allowed;
+        #authButton {
+            background-color: #001279;
         }
-        .toggle-checkbox:disabled::before {
-            background-color: #E5E7EB; /* bg-gray-300 */
+        #authButton:hover {
+            background-color: #16289B;
         }
+        #downloadButton {
+            display: none;
+            margin-top: 15px;
+            background-color: #001279;
+        }
+        #downloadButton:hover {
+            background-color: #16289B;
+        }
+        #stopButton {
+            display: none;
+            margin-left: 10px;
+            background-color: #BF3700;
+        }
+        #stopButton:hover {
+            background-color: #FF5100;
+        }
+        #proceedButton {
+            display: none;
+            margin-left: 10px;
+            background-color: #001279;
+        }
+        #proceedButton:hover {
+            background-color: #16289B;
+        }
+        #log {
+            background-color: #f9fafb;
+            border: 1px solid #e5e7eb;
+            border-radius: 8px;
+            padding: 15px;
+            height: 300px;
+            overflow-y: scroll;
+            margin-top: 20px;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            color: #374151;
+        }
+        .log-success { color: #10b981; }
+        .log-error { color: #940a0a; }
+        .log-info { color: #001279; }
+        .logo-container {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        .logo {
+            max-width: 250px;
+            height: auto;
+        }
+        .collapsible-content {
+            display: none;
+            padding: 15px;
+            border: 1px solid #e5e7eb;
+            border-radius: 8px;
+            background-color: #f9fafb;
+            margin-top: 10px;
+        }
+        #toggleGuideButton {
+            background-color: #4b5563;
+            color: white;
+            height: 40px;
+            padding: 8px 15px;
+        }
+        #toggleGuideButton:hover {
+            background-color: #374151;
+        }
+        #customEndpointInput {
+            display: none;
+        }
+        .endpoint-text {
+            color: #6b7280;
+            font-size: 0.875rem;
+        }
+        .light-text {
+            color: #a0a0a0;
+        }
+        .input-group {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+        .input-group select {
+            flex-grow: 1;
+            margin-bottom: 0;
+            width: auto;
+            min-width: 0;
+        }
+        .input-group button {
+            white-space: nowrap;
+            padding: 10px 15px;
+            margin-top: 0;
+            flex-shrink: 0;
+        }
+        #getTemplateButton {
+            background-color: #001279;
+        }
+        #getTemplateButton:hover {
+            background-color: #16289B;
+        }
+        .form-group-inline {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        #authButton {
+            margin-top: 15px;
+        }
+        /* NEW STYLE FOR HIGHLIGHTED NOTE */
+        .highlight-note {
+            background-color: #fef3f2; /* Light red/pink background */
+            border: 2px solid #fee2e2;
+            padding: 10px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+        .highlight-note strong {
+            color: #732031; /* Use the existing warning text color */
+            font-weight: 700;
+        }
+        /* END NEW STYLE */
     </style>
 </head>
-<body class="bg-gray-100 font-sans">
-    <!-- This is where the React app will be mounted -->
-    <div id="root"></div>
+<body>
 
-    <!-- 4. The entire React application, written in JSX -->
-    <!-- We must use type="text/babel" for Babel to compile it -->
-    <script type="text/babel">
-        // Make sure to use React hooks from the global window object
-        const { useState, useEffect, useCallback } = React;
+    <div class="container">
+        <div class="logo-container">
+            <img src="https://nexudusacademy.spaces.nexudus.com//images/Logo.png?cache=2025-08-08T11:13:58+04:00" alt="Nexudus Logo" class="logo">
+        </div>
+        <h1>Nexudus Internal Update Tool (Beta)</h1>
+        <p class="warning-text"><i>Please only use this tool if you're confident in doing so. Making changes without full confidence can cause irreversible changes.</i></p>
 
-        // --- Helper Functions for Time Conversion (Minutes after Midnight) ---
-        const intToTime = (minutesInt) => {
-            if (minutesInt === null || isNaN(minutesInt) || minutesInt < 0 || minutesInt > 1439) {
-                if (minutesInt === 1439) return "23:59";
-                return "00:00"; 
-            }
-            const hours = Math.floor(minutesInt / 60);
-            const minutes = minutesInt % 60;
-            return [
-                hours.toString().padStart(2, '0'),
-                minutes.toString().padStart(2, '0')
-            ].join(':');
-        };
+        <p>This is a beta internal tool for authorized testers to perform batch API operations (PUT, POST, DELETE, GET) on Nexudus records. It processes a CSV file row-by-row, and all process activity is logged below. Failed records and successful GET results can be exported for review.</p>
 
-        const timeToInt = (timeString) => {
-            if (!timeString || typeof timeString !== 'string' || !timeString.includes(':')) {
-                return 0;
-            }
-            const [hours, minutes] = timeString.split(':').map(Number);
-            if (hours === 23 && minutes === 59) {
-                return 1439;
-            }
-            return (hours * 60) + minutes;
-        };
+        <!-- Guide Section -->
+        <button id="toggleGuideButton" onclick="toggleGuide()">Show Guide</button>
+        <div id="updateGuide" class="collapsible-content">
+            <h4>How to Use This Tool:</h4>
+            <p>This tool can currently be used for <strong>Updating</strong>, <strong>Creating</strong>, <strong>Deleting</strong>, and <strong>Getting</strong> records.</p>
+            <br>
+            
+            <h5>Update (<code>PUT</code>):</h5>
+            <ol>
+                <li><strong>Export the existing records:</strong> From the Nexudus Admin Panel, export the current records. This file is crucial because it contains the <strong><code>Id</code></strong> field, which tells the tool exactly which records to update.</li>
+                <li><strong>Prepare your file:</strong> Clean the export file by removing any columns you will not be updating. You only need to keep the <code>Id</code> and the columns with the new data.</li>
+                <li><strong>Add updated data:</strong> Add the column headers for the fields you want to change. For example, if you need to update the <code>BillingDay</code> for a list of Contracts, your CSV should include a <code>BillingDay</code> column. You can find all possible column headers in the Nexudus API documentation at <code>developers.nexudus.com</code>.</li>
+                <li><strong>Format data correctly:</strong>
+                    <ul>
+                        <li><strong>Lists of items</strong> will be correctly processed as a JSON array, but only if they are separated by a <strong>semicolon (;)</strong>. Do not use a comma to separate lists! For example, <code>Desks: Desk1;Desk2</code>.</li>
+                        <li><strong>Dates</strong> should be formatted in UTC as <code>yyyy-mm-dd hh:mm</code>. The tool will handle the conversion to the correct API format.</li>
+                    </ul>
+                </li>
+            </ol>
+            <br>
+            
+            <h5>Create (<code>POST</code>):</h5>
+            <p>The process for creating new records is the same as above, but you <strong>do not need to include the <code>Id</code></strong> in your CSV. Ensure all other fields are completed.</p>
+            <br>
+            
+            <h5>Delete (<code>DELETE</code>):</h5>
+            <p>This method attempts to permanently delete a record using its <code>Id</code> in the URL. <strong>Warning:</strong> Many critical Nexudus endpoints (e.g., Contracts) do not support <code>DELETE</code> and will return a "405 Method Not Allowed" error.</p>
+            <p><strong>Note on Coworkers:</strong> If you select <strong><code>Customers</code></strong> and <strong><code>DELETE</code></strong>, the tool automatically uses the **<code>POST /runcommand</code>** endpoint with the **<code>COWORKER_DELETE</code>** key to perform the soft-deletion, matching the expected API pattern.</p>
+            <p>For all other records, use the <code>DELETE</code> method only if you have confirmed through the Nexudus API documentation that the specific endpoint supports hard deletion.</p>
+            <br>
+            
+            <h5>Get (<code>GET</code>):</h5>
+            <p>To retrieve full record details, select the <code>GET</code> method. Your CSV file should contain only a single column named <strong><code>Id</code></strong> with the IDs of the records you wish to retrieve. The tool will download a new CSV with the full details of all successful requests.</p>
+        </div>
 
-        const generateTimeOptions = () => {
-            const options = [];
-            for (let i = 0; i < 48; i++) {
-                const totalMinutes = i * 30;
-                const hours = Math.floor(totalMinutes / 60);
-                const minutes = totalMinutes % 60;
-                const hhmm = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
-                const ampm = hours >= 12 ? 'PM' : 'AM';
-                let displayHours = hours % 12;
-                if (displayHours === 0) displayHours = 12;
-                const displayMinutes = minutes.toString().padStart(2, '0');
-                const label = `${displayHours}:${displayMinutes} ${ampm}`;
-                options.push({ value: hhmm, label: label });
-            }
-            options.push({ value: "23:59", label: "11:59 PM" });
-            return options;
-        };
+        <!-- Authentication Section -->
+        <h3>1. Authentication</h3>
+        <p>Enter the username and password for the Nexudus account you are making updates to. You should use the admin account that was created for you based on the access code log in, and then perform a forgotten password to obtain the password.</p>
+        <div class="form-group-inline" style="display: none;"> <!-- HIDDEN AUTH METHOD CHOICE -->
+            <label for="authMethod">Auth Method:</label>
+            <input type="radio" id="authMethodBasic" name="authMethod" value="basic" checked onchange="toggleAuthFields()">
+            <label for="authMethodBasic">Basic Auth</label>
+            <span id="oauthToggleContainer" style="display: none;">
+                <input type="radio" id="authMethodOAuth" name="authMethod" value="oauth2" onchange="toggleAuthFields()">
+                <label for="authMethodOAuth">OAuth2</label>
+            </span>
+        </div>
+        <div id="basicAuthFields">
+            <label for="username" class="font-medium text-gray-700">Username:</label>
+            <input type="text" id="username" oninput="checkAuthButtonValidity()">
+            <label for="password" class="font-medium text-gray-700">Password:</label>
+            <input type="password" id="password" oninput="checkAuthButtonValidity()">
+        </div>
+        <div id="oauth2AuthFields" style="display: none;">
+            <label for="oauth2Token" class="font-medium text-gray-700">OAuth2 Access Token:</label>
+            <input type="password" id="oauth2Token" oninput="checkAuthButtonValidity()">
+        </div>
+        <button id="authButton" onclick="testAuth()" disabled>Test Authentication</button>
 
-        const timeOptions = generateTimeOptions();
-
-        // --- Reusable Icon Components ---
-        const LockIcon = () => (
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-            </svg>
-        );
-        const MailIcon = () => (
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-            </svg>
-        );
-        const LocationIcon = () => (
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-nex-orange" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.828 0l-4.243-4.243a8 8 0 1111.314 0z" />
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-            </svg>
-        );
-        const ClockIcon = () => (
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-nex-orange" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-        );
-        const CopyIcon = () => (
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
-            </svg>
-        );
-        const BillingIcon = () => (
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-nex-orange" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
-            </svg>
-        );
-        const PlayIcon = () => (
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-nex-orange" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
-                <path strokeLinecap="round" strokeLinejoin="round" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-        );
-        const SparklesIcon = () => (
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-nex-orange" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" />
-            </svg>
-        );
-        const ClipboardListIcon = () => (
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-nex-orange" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
-            </svg>
-        );
-        const CalendarIcon = () => (
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-nex-orange" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-            </svg>
-        );
-        // New Help Icon
-        const HelpIcon = () => (
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-1.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.79 4 4 0 1.152-.468 2.19-1.228 2.969-.76.778-1.79 1.28-2.772 1.378A1 1 0 0112 15v.01M12 18h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-        );
-
-        // --- Reusable Form Components ---
-        const InputField = ({ id, label, type, value, onChange, placeholder, icon, disabled = false }) => (
-            <div>
-                <label htmlFor={id} className="block text-sm font-medium text-gray-700">
-                    {label}
-                </label>
-                <div className="relative mt-1 rounded-md shadow-sm">
-                    <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
-                        {icon}
-                    </div>
-                    <input
-                        type={type}
-                        id={id}
-                        name={id}
-                        value={value}
-                        onChange={onChange}
-                        placeholder={placeholder}
-                        disabled={disabled}
-                        className={`block w-full rounded-md border-gray-300 py-3 pl-10 pr-4 text-gray-900 focus:border-nex-orange focus:ring-nex-orange sm:text-sm ${disabled ? 'bg-gray-100' : ''}`}
-                    />
-                </div>
+        <div id="step2and3" style="display:none;">
+            <!-- API Configuration Section -->
+            <h3>2. API Configuration</h3>
+            <p>Specify the API endpoint and the HTTP method to use for the requests. For PUT requests, the tool will automatically detect array fields from a sample record.</p>
+            <div class="input-group">
+                <label for="recordType" class="font-medium text-gray-700">Record Type:</label>
+                <select id="recordType" onchange="handleRecordTypeChange()">
+                    <option value="">-- Select a record type --</option>
+                    <option value="https://spaces.nexudus.com/api/spaces/bookings">Bookings</option>
+                    <option value="https://spaces.nexudus.com/api/spaces/bookingproducts">Booking Products</option>
+                    <option value="https://spaces.nexudus.com/api/spaces/bookingvisitors">Booking Visitors</option>
+                    <option value="https://spaces.nexudus.com/api/billing/contractcontacts">Contract Contact - Virtual Offices</option>
+                    <option value="https://spaces.nexudus.com/api/billing/contractdeposits">Contract Deposit</option>
+                    <option value="https://spaces.nexudus.com/api/billing/contractproducts">Contract Products</option>
+                    <option value="https://spaces.nexudus.com/api/billing/contractschedules">Contract Schedules</option>
+                    <option value="https://spaces.nexudus.com/api/billing/coworkercontracts">Contracts</option>
+                    <option value="https://spaces.nexudus.com/api/billing/coworkerdiscountcodes">Customer Discount Code</option>
+                    <option value="https://spaces.nexudus.com/api/spaces/coworkerdatafiles">Customer Documents</option>
+                    <option value="https://spaces.nexudus.com/api/spaces/coworkernotes">Customer Note</option>
+                    <option value="https://spaces.nexudus.com/api/billing/coworkerproducts">Customer Product Sale</option>
+                    <option value="https://spaces.nexudus.com/api/spaces/coworkers">Customers</option>
+                    <option value="https://spaces.nexudus.com/api/spaces/coworkerdeliveries">Deliveries</option>
+                    <option value="https://spaces.nexudus.com/api/content/calendarevents">Events</option>
+                    <option value="https://spaces.nexudus.com/api/crm/cannedresponses">Message Macros</option>
+                    <option value="https://spaces.nexudus.com/api/billing/timepasses">Pass</option>
+                    <option value="https://spaces.nexudus.com/api/billing/tariffs">Plan</option>
+                    <option value="https://spaces.nexudus.com/api/billing/products">Product</option>
+                    <option value="custom">None of these? Enter a custom API endpoint URL</option>
+                </select>
+                <button id="getTemplateButton" onclick="getTemplate()" disabled>Get CSV Template</button>
             </div>
-        );
-
-        const SelectField = ({ id, label, value, onChange, children, disabled = false, name = "" }) => (
-            <div>
-                {label && (
-                    <label htmlFor={id} className="block text-sm font-medium text-gray-700">
-                        {label}
-                    </label>
-                )}
-                <select
-                    id={id}
-                    name={name || id}
-                    value={value}
-                    onChange={onChange}
-                    disabled={disabled}
-                    className="mt-1 block w-full rounded-md border-gray-300 py-3 pl-3 pr-10 text-base text-gray-900 focus:border-nex-orange focus:ring-nex-orange sm:text-sm"
-                >
-                    {children}
+            <div id="customEndpointInput" style="display: none;">
+                <label for="apiEndpoint" class="font-medium text-gray-700">Custom API Endpoint URL:</label>
+                <input type="text" id="apiEndpoint" placeholder="e.g., https://spaces.nexudus.com/api/custom" onchange="handleCustomEndpointChange()">
+            </div>
+            <div id="selectedEndpointDisplay">
+                <span class="endpoint-text">Selected Endpoint: </span><span class="endpoint-text" id="selectedEndpointValue"></span>
+            </div>
+            <div class="form-group-inline">
+                <label for="httpMethod" class="font-medium text-gray-700">HTTP Method:</label>
+                <select id="httpMethod" onchange="checkStartButtonValidity()">
+                    <option value="PUT">Update Records <span class="light-text">(PUT)</span></option>
+                    <option value="POST">Create Records <span class="light-text">(POST)</span></option>
+                    <option value="DELETE">Delete Records <span class="light-text">(DELETE)</span></option>
+                    <option value="GET">Get Records <span class="light-text">(GET)</span></option>
                 </select>
             </div>
-        );
+            
+            <!-- File Upload and Action Section -->
+            <h3>3. Upload CSV & Run</h3>
+            <p class="highlight-note">
+                <strong>Important:</strong> All upload files must include the **LocationId** column, with the Nexudus Location ID where the record sits.
+            </p>
+            <p>Upload the CSV file. The tool will use the 'Id' column to identify the record and all other columns to form the update payload.</p>
+            <input type="file" id="csvFile" accept=".csv">
+            <br><br>
+            <button id="startButton" onclick="startUpdate()" disabled>Start Process</button>
+            <button id="proceedButton" style="display: none;">Proceed</button>
+            <button id="stopButton" onclick="stopProcessing()" style="display: none;">Stop Processing</button>
+            <button id="downloadButton" style="display: none;"></button>
+        </div>
+
+        <!-- Progress Log Section (Now always visible) -->
+        <div id="step4">
+            <h3>Progress Log</h3>
+            <div id="progressBarContainer">
+                <div id="progressBar"></div>
+            </div>
+            <p class="status-message" id="progressStatus">Ready to begin.</p>
+            <pre id="log"></pre>
+        </div>
+    </div>
+
+    <script>
+        // Array to store failed records and successfully retrieved records
+        let failedRecords = [];
+        let allRecords = [];
+        let fetchedRecords = [];
+        const requestDelay = 1100; // 1.1 seconds delay between requests to respect rate limits
+        let isProcessing = false;
+        let arrayFields = []; // Dynamically discovered array fields
+        let processedCount = 0;
+        let authHeader = '';
+        let proceedResolver = null;
+        let businessTimeZoneCache = {}; // Cache for timezone data
+        let isGetOperation = false;
+        let isAuthenticated = false;
+
+        // List of fields that are expected to be dates
+        const dateFields = [
+            'StartDate', 'RenewalDate', 'InvoicedPeriod', 'CancellationDate', 
+            'PricePlanTermsAcceptedOn', 'UpdatedOn', 'CreatedOn'
+        ];
+
+        // Helper functions
+        function log(message, type = 'info') {
+            const logElement = document.getElementById('log');
+            if (logElement) {
+                const logEntry = document.createElement('span');
+                logEntry.textContent = `${new Date().toLocaleTimeString()} - ${message}\n`;
+                
+                if (type === 'success') {
+                    logEntry.className = 'log-success';
+                } else if (type === 'error') {
+                    logEntry.className = 'log-error';
+                } else {
+                    logEntry.className = 'log-info';
+                }
+                
+                logElement.appendChild(logEntry);
+                logElement.scrollTop = logElement.scrollHeight;
+            }
+        }
         
-        // New Tooltip Component
-        const ExpertTooltip = ({ onBookCall }) => (
-            <button
-                type="button"
-                onClick={onBookCall}
-                className="absolute top-0 right-0 -mt-4 sm:-mt-6 flex items-center text-sm font-medium text-gray-600 hover:text-nex-orange transition-colors"
-            >
-                <HelpIcon />
-                Speak to an expert
-            </button>
-        );
-
-        // --- API Fetching Functions ---
-        // Note: Caching authString in state for simplicity
-        const fetchBusinesses = async (authData) => {
-            const { email, password } = authData;
-            const authString = btoa(`${email}:${password}`);
-            const response = await fetch("https://spaces.nexudus.com/api/sys/businesses", {
-                method: 'GET',
-                headers: { 'Authorization': `Basic ${authString}` }
-            });
-            if (!response.ok) {
-                throw new Error(`Failed to fetch businesses. Status: ${response.status}`);
-            }
-            const data = await response.json();
-            return data.Records || [];
-        };
-
-        const fetchBusinessDetails = async (businessId, authData) => {
-            const { email, password } = authData;
-            const authString = btoa(`${email}:${password}`);
-            const response = await fetch(`https://spaces.nexudus.com/api/sys/businesses/${businessId}`, {
-                method: 'GET',
-                headers: { 'Authorization': `Basic ${authString}` }
-            });
-            if (!response.ok) {
-                throw new Error(`Failed to fetch business details. Status: ${response.status}`);
-            }
-            return await response.json();
-        };
-
-        const fetchCurrencies = async (authData) => {
-            const { email, password } = authData;
-            const authString = btoa(`${email}:${password}`);
-            const response = await fetch("https://spaces.nexudus.com/api/billing/currencies", {
-                method: 'GET',
-                headers: { 'Authorization': `Basic ${authString}` }
-            });
-            if (!response.ok) {
-                throw new Error(`Failed to fetch currencies. Status: ${response.status}`);
-            }
-            const data = await response.json();
-            return data.Records || [];
-        };
-
-        const updateBusinessDetails = async (businessId, existingData, updateData, authData) => {
-            const { email, password } = authData;
-            const authString = btoa(`${email}:${password}`);
-            const payload = { ...existingData, ...updateData };
-
-            const response = await fetch(`https://spaces.nexudus.com/api/sys/businesses`, {
-                method: 'PUT',
-                headers: {
-                    'Authorization': `Basic ${authString}`,
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify(payload)
-            });
-
-            if (!response.ok) {
-                const errorBody = await response.text();
-                throw new Error(`Failed to update business. Status: ${response.status}. Body: ${errorBody}`);
-            }
-            return await response.json();
-        };
-
-        // --- Wizard Stage Components ---
-
-        /**
-         * Stage 1: Welcome & Video
-         */
-        const WelcomeStage = ({ onNext }) => (
-            <React.Fragment>
-                <div className="flex items-center space-x-3">
-                    <PlayIcon />
-                    <h2 className="text-2xl font-semibold text-gray-800">Before you begin...</h2>
-                </div>
-                <p className="mt-2 text-lg text-gray-600">
-                    Before you begin your onboarding journey...
-                </p>
-                <div className="mt-6 aspect-video w-full overflow-hidden rounded-lg shadow-md">
-                    <iframe 
-                        className="w-full h-full"
-                        src="https://www.youtube.com/embed/RVpxto7_lVs?si=6QS0cmfT5X61-qm6" 
-                        title="YouTube video player" 
-                        frameBorder="0" 
-                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" 
-                        referrerPolicy="strict-origin-when-cross-origin" 
-                        allowFullScreen>
-                    </iframe>
-                </div>
-                <div className="flex justify-end pt-8">
-                    <button
-                        type="button"
-                        onClick={onNext}
-                        className="flex w-full justify-center rounded-md border border-transparent bg-nex-orange py-3 px-4 text-sm font-medium text-white shadow-sm hover:bg-nex-orange-dark focus:outline-none focus:ring-2 focus:ring-nex-orange focus:ring-offset-2 sm:w-auto"
-                    >
-                        Start Onboarding &rarr;
-                    </button>
-                </div>
-            </React.Fragment>
-        );
-
-        /**
-         * Stage 2: Onboarding Choice
-         */
-        const OnboardingChoiceStage = ({ onChoice, onBack }) => {
-            // Calendly is no longer shown here, it's moved to Stage 7
-            return (
-                <React.Fragment>
-                    <div className="flex items-center space-x-3">
-                        <h2 className="text-2xl font-semibold text-gray-800">Step 2: Choose your path</h2>
-                    </div>
-                    <p className="mt-2 text-sm text-gray-600">
-                        How would you like to get started?
-                    </p>
-                    <div className="mt-6 grid grid-cols-1 gap-6 md:grid-cols-3">
-                        {/* Card 1: AI (Coming Soon) */}
-                        <div className="relative flex flex-col rounded-lg border border-gray-200 bg-white p-6 shadow-sm opacity-50">
-                            <div className="flex-shrink-0"><SparklesIcon /></div>
-                            <h3 className="mt-4 text-lg font-medium text-gray-900">AI Assisted Onboarding</h3>
-                            <p className="mt-2 text-sm text-gray-500 flex-grow">
-                                Make use of NAI, the Nexudus AI tool, to help with your onboarding.
-                                At any time, you'll be able to book in a call with your dedicated onboarding specialist.
-                            </p>
-                            <button
-                                type="button"
-                                disabled
-                                className="mt-6 rounded-md bg-gray-300 py-2 px-4 text-sm font-medium text-gray-500 cursor-not-allowed"
-                            >
-                                Coming Soon
-                            </button>
-                        </div>
-                        {/* Card 2: Guided Onboarding */}
-                        <div className="relative flex flex-col rounded-lg border-2 border-nex-orange bg-white p-6 shadow-lg">
-                            <span className="absolute top-0 right-0 -mt-3 -mr-3 inline-flex items-center rounded-full bg-nex-orange px-3 py-0.5 text-sm font-medium text-white">
-                                Recommended
-                            </span>
-                            <div className="flex-shrink-0"><ClipboardListIcon /></div>
-                            <h3 className="mt-4 text-lg font-medium text-gray-900">Guided Onboarding</h3>
-                            <p className="mt-2 text-sm text-gray-500 flex-grow">
-                                Enter your details in a structured manner to complete your setup.
-                                At any time, you'll be able to book in a call with your dedicated onboarding specialist.
-                            </p>
-                            <button
-                                type="button"
-                                onClick={() => onChoice(3)} // Go to Stage 3 (Auth)
-                                className="mt-6 rounded-md bg-nex-orange py-2 px-4 text-sm font-medium text-white hover:bg-nex-orange-dark"
-                            >
-                                Start Guided Onboarding
-                            </button>
-                        </div>
-                        {/* Card 3: Assisted (Calendly) */}
-                        <div className="relative flex flex-col rounded-lg border border-gray-200 bg-white p-6 shadow-sm">
-                            <div className="flex-shrink-0"><CalendarIcon /></div>
-                            <h3 className="mt-4 text-lg font-medium text-gray-900">Assisted</h3>
-                            <p className="mt-2 text-sm text-gray-500 flex-grow">
-                                Book in your first call with the onboarding team now and let them take the lead.
-                            </p>
-                            <button
-                                type="button"
-                                onClick={() => onChoice(7)} // Go to Stage 7 (Calendly)
-                                className="mt-6 rounded-md bg-gray-600 py-2 px-4 text-sm font-medium text-white hover:bg-gray-700"
-                            >
-                                Book a Call
-                            </button>
-                        </div>
-                    </div>
-                    <div className="flex justify-start pt-8">
-                        <button
-                            type="button"
-                            onClick={onBack}
-                            className="flex w-full justify-center rounded-md border border-gray-300 bg-white py-3 px-4 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-gray-400 focus:ring-offset-2 sm:w-auto"
-                        >
-                            &larr; Back to Welcome
-                        </button>
-                    </div>
-                </React.Fragment>
-            );
-        };
-
-        /**
-         * Stage 3: Authentication
-         */
-        const AuthStage = ({ onAuthSuccess, authData, setAuthData, onBack }) => {
-            const [email, setEmail] = useState(authData.email || "");
-            const [password, setPassword] = useState(authData.password || "");
-            const [isLoading, setIsLoading] = useState(false);
-            const [error, setError] = useState("");
-
-            const handleSignIn = async (e) => {
-                e.preventDefault();
-                setIsLoading(true);
-                setError("");
-                try {
-                    const newAuthData = { email, password };
-                    const businesses = await fetchBusinesses(newAuthData);
-                    onAuthSuccess(newAuthData, businesses);
-                } catch (err) {
-                    setError("Sign in failed. Please check your credentials and try again.");
-                    console.error(err);
-                }
-                setIsLoading(false);
-            };
-
-            return (
-                <React.Fragment>
-                    <div className="flex items-center space-x-3">
-                        <LockIcon />
-                        <h2 className="text-2xl font-semibold text-gray-800">Step 3: Sign in</h2>
-                    </div>
-                    <p className="mt-2 text-sm text-gray-600">
-                        Please provide your Nexudus email and password to access the tool.
-                    </p>
-                    <form onSubmit={handleSignIn} className="mt-6 space-y-6">
-                        {error && (
-                            <div className="rounded-md bg-red-50 p-4">
-                                <p className="text-sm font-medium text-red-700">{error}</p>
-                            </div>
-                        )}
-                        <InputField
-                            id="email"
-                            label="Your Nexudus administrator email"
-                            type="email"
-                            value={email}
-                            onChange={(e) => setEmail(e.target.value)}
-                            placeholder="you@example.com"
-                            icon={<MailIcon />}
-                        />
-                        <InputField
-                            id="password"
-                            label="Your Nexudus administrator password"
-                            type="password"
-                            value={password}
-                            onChange={(e) => setPassword(e.target.value)}
-                            placeholder="••••••••"
-                            icon={<LockIcon />}
-                        />
-                        <div className="flex flex-col space-y-4 sm:flex-row-reverse sm:justify-between sm:space-y-0">
-                            <button
-                                type="submit"
-                                disabled={isLoading}
-                                className="flex w-full justify-center rounded-md border border-transparent bg-nex-orange py-3 px-4 text-sm font-medium text-white shadow-sm hover:bg-nex-orange-dark focus:outline-none focus:ring-2 focus:ring-nex-orange focus:ring-offset-2 sm:w-auto"
-                            >
-                                {isLoading ? "Signing in..." : "Sign in"}
-                            </button>
-                            <button
-                                type="button"
-                                onClick={onBack}
-                                className="flex w-full justify-center rounded-md border border-gray-300 bg-white py-3 px-4 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-gray-400 focus:ring-offset-2 sm:w-auto"
-                            >
-                                &larr; Back to Choices
-                            </button>
-                        </div>
-                    </form>
-                </React.Fragment>
-            );
-        };
-
-        /**
-         * Stage 4: Location Selection
-         */
-        const SelectionStage = ({ businesses, onSelect, onBack }) => {
-            const [selectedBusiness, setSelectedBusiness] = useState(businesses[0]?.Id || "");
-
-            const handleSubmit = (e) => {
-                e.preventDefault();
-                if (selectedBusiness) {
-                    onSelect(selectedBusiness);
-                }
-            };
-
-            return (
-                <React.Fragment>
-                    <div className="flex items-center space-x-3">
-                        <LocationIcon />
-                        <h2 className="text-2xl font-semibold text-gray-800">Step 4: Choose location</h2>
-                    </div>
-                    <p className="mt-2 text-sm text-gray-600">
-                        Success! Now select the location you'd like to continue onboarding.
-                    </p>
-                    <form onSubmit={handleSubmit} className="mt-6 space-y-6">
-                        <SelectField
-                            id="businessSelect"
-                            label="Select location"
-                            value={selectedBusiness}
-                            onChange={(e) => setSelectedBusiness(e.target.value)}
-                        >
-                            {businesses.map((business) => (
-                                <option key={business.Id} value={business.Id}>
-                                    {business.Name}
-                                </option>
-                            ))}
-                        </SelectField>
-                        <div className="flex flex-col space-y-4 sm:flex-row-reverse sm:justify-between sm:space-y-0">
-                            <button
-                                type="submit"
-                                className="flex w-full justify-center rounded-md border border-transparent bg-nex-orange py-3 px-4 text-sm font-medium text-white shadow-sm hover:bg-nex-orange-dark focus:outline-none focus:ring-2 focus:ring-nex-orange focus:ring-offset-2 sm:w-auto"
-                            >
-                                Continue Onboarding
-                            </button>
-                            <button
-                                type="button"
-                                onClick={onBack}
-                                className="flex w-full justify-center rounded-md border border-gray-300 bg-white py-3 px-4 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-gray-400 focus:ring-offset-2 sm:w-auto"
-                            >
-                                &larr; Change Credentials
-                            </button>
-                        </div>
-                    </form>
-                </React.Fragment>
-            );
-        };
-
-        /**
-         * Stage 5: Opening Times Configuration
-         */
-        const OpeningTimesStage = ({ businessId, authData, onNext, onBack }) => {
-            const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
-            const [isLoading, setIsLoading] = useState(true);
-            const [isSaving, setIsSaving] = useState(false);
-            const [error, setError] = useState("");
-            const [status, setStatus] = useState("");
-            const [existingData, setExistingData] = useState(null);
-            const [times, setTimes] = useState({});
-
-            useEffect(() => {
-                const loadDetails = async () => {
-                    setIsLoading(true);
-                    try {
-                        const details = await fetchBusinessDetails(businessId, authData);
-                        setExistingData(details);
-                        const initialTimes = {};
-                        days.forEach(day => {
-                            const openKey = `${day}OpenTime`;
-                            const closeKey = `${day}CloseTime`;
-                            const closedKey = `${day}Closed`;
-                            const openTime = details[openKey];
-                            const closeTime = details[closeKey];
-                            const isClosed = details[closedKey] || false;
-                            const is24Hours = openTime === 0 && closeTime === 1439;
-                            initialTimes[day] = {
-                                openTime: intToTime(openTime),
-                                closeTime: intToTime(is24Hours ? 1439 : closeTime),
-                                isClosed: isClosed,
-                                is24Hours: is24Hours,
-                            };
-                        });
-                        setTimes(initialTimes);
-                    } catch (err) {
-                        setError("Failed to load business details. " + err.message);
-                    }
-                    setIsLoading(false);
-                };
-                if (businessId && authData) {
-                    loadDetails();
-                }
-            }, [businessId, authData]);
-
-            const handleChange = (day, field, value) => {
-                setTimes(prevTimes => {
-                    const currentDayTimes = prevTimes[day] || { openTime: '09:00', closeTime: '17:00', isClosed: true, is24Hours: false };
-                    const dayTimes = { ...currentDayTimes, [field]: value };
-                    if (field === 'is24Hours' && value === true) {
-                        dayTimes.openTime = "00:00";
-                        dayTimes.closeTime = "23:59";
-                    }
-                    if (field === 'is24Hours' && value === false) {
-                        dayTimes.openTime = "09:00";
-                        dayTimes.closeTime = "17:00";
-                    }
-                    if (field === 'isClosed' && value === true) {
-                        dayTimes.is24Hours = false;
-                    }
-                    if (field === 'isClosed' && value === false) {
-                        dayTimes.is24Hours = dayTimes.openTime === '00:00' && dayTimes.closeTime === '23:59';
-                    }
-                    return { ...prevTimes, [day]: dayTimes };
-                });
-            };
-
-            const handleCopyToAll = (dayToCopy) => {
-                const sourceTimes = times[dayToCopy];
-                if (!sourceTimes) return;
-                setTimes(prevTimes => {
-                    const newTimes = { ...prevTimes };
-                    days.forEach(day => {
-                        if (day !== dayToCopy) {
-                            newTimes[day] = { ...sourceTimes };
-                        }
-                    });
-                    return newTimes;
-                });
-            };
-
-            const handleSave = async (e) => {
-                if (e) e.preventDefault();
-                setIsSaving(true);
-                setError("");
-                setStatus("");
-                try {
-                    const updatePayload = {};
-                    days.forEach(day => {
-                        const dayTimes = times[day] || { openTime: '09:00', closeTime: '17:00', isClosed: true, is24Hours: false };
-                        if (dayTimes.is24Hours) {
-                            updatePayload[`${day}OpenTime`] = 0;
-                            updatePayload[`${day}CloseTime`] = 1439;
-                        } else {
-                            updatePayload[`${day}OpenTime`] = timeToInt(dayTimes.openTime);
-                            updatePayload[`${day}CloseTime`] = timeToInt(dayTimes.closeTime);
-                        }
-                        updatePayload[`${day}Closed`] = dayTimes.isClosed;
-                    });
-                    const updatedExistingData = { ...existingData, ...updatePayload };
-                    setExistingData(updatedExistingData);
-                    await updateBusinessDetails(businessId, updatedExistingData, updatePayload, authData);
-                    setStatus("Opening times saved successfully!");
-                    setTimeout(() => setStatus(""), 2000);
-                    return true;
-                } catch (err) {
-                    setError("Failed to save opening times. " + err.message);
+        async function setAuthHeader() {
+            const authMethod = 'basic'; // Hardcoding to basic since choice is hidden.
+            if (authMethod === 'basic') {
+                const username = document.getElementById('username').value;
+                const password = document.getElementById('password').value;
+                if (!username || !password) {
                     return false;
-                } finally {
-                    setIsSaving(false);
                 }
-            };
-
-            if (isLoading) {
-                return <p className="text-gray-600">Loading opening times...</p>;
+                authHeader = 'Basic ' + btoa(username + ':' + password);
+            } else if (authMethod === 'oauth2') {
+                const oauth2Token = document.getElementById('oauth2Token').value;
+                if (!oauth2Token) {
+                    return false;
+                }
+                authHeader = 'Bearer ' + oauth2Token;
             }
-
-            return (
-                <React.Fragment>
-                    <div className="flex items-center space-x-3">
-                        <ClockIcon />
-                        <h2 className="text-2xl font-semibold text-gray-800">Step 5: Opening Times</h2>
-                    </div>
-                    <p className="mt-2 text-sm text-gray-600">
-                        Set the days of the week and times of the day this location is open to the public.
-                    </p>
-                    <form onSubmit={(e) => e.preventDefault()} className="mt-6 space-y-4">
-                        {error && <p className="text-sm font-medium text-red-700">{error}</p>}
-                        {status && <p className="text-sm font-medium text-green-700">{status}</p>}
-                        <div className="grid grid-cols-3 gap-x-6 items-center pb-2 border-b border-gray-200">
-                            <div className="grid grid-cols-3 gap-x-2 col-span-1">
-                                <span className="text-xs font-semibold uppercase text-gray-500 col-span-1">Day</span>
-                                <span className="text-xs font-semibold uppercase text-gray-500 text-center">Open</span>
-                                <span className="text-xs font-semibold uppercase text-gray-500 text-center">24 Hrs</span>
-                            </div>
-                            <div className="grid grid-cols-2 gap-x-4 col-span-2">
-                                <span className="text-xs font-semibold uppercase text-gray-500">From</span>
-                                <span className="text-xs font-semibold uppercase text-gray-500">Until</span>
-                            </div>
-                        </div>
-                        {days.map(day => {
-                            const dayData = times[day] || { isClosed: true, is24Hours: false, openTime: "09:00", closeTime: "17:00" };
-                            const isDisabled = dayData.isClosed;
-                            const timePickersDisabled = dayData.isClosed || dayData.is24Hours;
-                            return (
-                                <div key={day} className="grid grid-cols-3 gap-x-6 items-center border-t border-gray-200 pt-4">
-                                    <div className="grid grid-cols-3 gap-x-2 col-span-1 items-center">
-                                        <label className="font-medium text-gray-900 col-span-1">{day}</label>
-                                        <div className="flex justify-center">
-                                            <input
-                                                type="checkbox"
-                                                id={`${day}_closed`}
-                                                checked={!dayData.isClosed}
-                                                onChange={(e) => handleChange(day, 'isClosed', !e.target.checked)}
-                                                className="toggle-checkbox"
-                                            />
-                                        </div>
-                                        <div className="flex justify-center">
-                                            <input
-                                                type="checkbox"
-                                                id={`${day}_24hrs`}
-                                                checked={dayData.is24Hours}
-                                                onChange={(e) => handleChange(day, 'is24Hours', e.target.checked)}
-                                                disabled={isDisabled}
-                                                className="toggle-checkbox"
-                                            />
-                                        </div>
-                                    </div>
-                                    <div className={`grid grid-cols-2 gap-x-4 col-span-2 items-center ${timePickersDisabled ? 'opacity-50' : ''} ${dayData.is24Hours ? 'hidden' : ''}`}>
-                                        <div className="relative">
-                                            <SelectField
-                                                id={`${day}_open`}
-                                                label=""
-                                                value={dayData.openTime}
-                                                onChange={(e) => handleChange(day, 'openTime', e.target.value)}
-                                                disabled={timePickersDisabled}
-                                            >
-                                                {timeOptions.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
-                                            </SelectField>
-                                        </div>
-                                        <div className="relative flex items-center">
-                                            <div className="flex-grow">
-                                                <SelectField
-                                                    id={`${day}_close`}
-                                                    label=""
-                                                    value={dayData.closeTime}
-                                                    onChange={(e) => handleChange(day, 'closeTime', e.target.value)}
-                                                    disabled={timePickersDisabled}
-                                                >
-                                                    {timeOptions.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
-                                                </SelectField>
-                                            </div>
-                                            <button
-                                                type="button"
-                                                onClick={() => handleCopyToAll(day)}
-                                                className={`ml-2 p-2 flex-shrink-0 text-gray-500 hover:text-nex-orange`}
-                                                title="Copy this row to all other days"
-                                            >
-                                                <CopyIcon />
-                                            </button>
-                                        </div>
-                                    </div>
-                                </div>
-                            );
-                        })}
-                        <div className="flex flex-col space-y-4 pt-6 sm:flex-row-reverse sm:justify-between sm:space-y-0">
-                            <button
-                                type="button"
-                                onClick={async () => {
-                                    const success = await handleSave();
-                                    if (success) {
-                                        onNext();
-                                    }
-                                }}
-                                disabled={isSaving}
-                                className="flex w-full justify-center rounded-md border border-transparent bg-nex-orange py-3 px-4 text-sm font-medium text-white shadow-sm hover:bg-nex-orange-dark focus:outline-none focus:ring-2 focus:ring-nex-orange focus:ring-offset-2 sm:w-auto"
-                            >
-                                {isSaving ? "Saving..." : "Save & Continue"}
-                            </button>
-                            <button
-                                type="button"
-                                onClick={onBack}
-                                disabled={isSaving}
-                                className="flex w-full justify-center rounded-md border border-gray-300 bg-white py-3 px-4 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-gray-400 focus:ring-offset-2 sm:w-auto"
-                            >
-                                &larr; Back to Location
-                            </button>
-                        </div>
-                    </form>
-                </React.Fragment>
-            );
-        };
-
-        /**
-         * Stage 6: Billing Settings Configuration
-         */
-        const BillingSettingsStage = ({ businessId, authData, onBack }) => {
-            const [isLoading, setIsLoading] = useState(true);
-            const [isSaving, setIsSaving] = useState(false);
-            const [error, setError] = useState("");
-            const [status, setStatus] = useState("");
-            const [existingData, setExistingData] = useState(null);
-            const [currencies, setCurrencies] = useState([]);
-            const [formData, setFormData] = useState({
-                CurrencyId: '',
-                TaxRate: 0,
-                DefaultInvoicingDay: 1,
-            });
-
-            useEffect(() => {
-                const loadData = async () => {
-                    setIsLoading(true);
-                    try {
-                        const [details, currencyData] = await Promise.all([
-                            fetchBusinessDetails(businessId, authData),
-                            fetchCurrencies(authData)
-                        ]);
-                        setExistingData(details);
-                        setCurrencies(currencyData);
-                        setFormData({
-                            CurrencyId: details.CurrencyId || '',
-                            TaxRate: details.TaxRate || 0,
-                            DefaultInvoicingDay: details.DefaultInvoicingDay || 1,
-                        });
-                    } catch (err) {
-                        setError("Failed to load billing data. " + err.message);
-                    }
-                    setIsLoading(false);
-                };
-                if (businessId && authData) {
-                    loadData();
-                }
-            }, [businessId, authData]);
-
-            const handleChange = (e) => {
-                const { name, value } = e.target;
-                setFormData(prev => ({ ...prev, [name]: value }));
-            };
-
-            const handleSave = async (e) => {
-                e.preventDefault();
-                setIsSaving(true);
-                setError("");
-                setStatus("");
-                try {
-                    const updatePayload = {
-                        CurrencyId: parseInt(formData.CurrencyId, 10),
-                        TaxRate: parseFloat(formData.TaxRate),
-                        DefaultInvoicingDay: parseInt(formData.DefaultInvoicingDay, 10),
-                    };
-                    const updatedExistingData = { ...existingData, ...updatePayload };
-                    setExistingData(updatedExistingData);
-                    await updateBusinessDetails(businessId, updatedExistingData, updatePayload, authData);
-                    setStatus("Billing settings saved successfully!");
-                    setTimeout(() => setStatus(""), 2000);
-                    // onNext(); // Call this when Step 7 exists
-                } catch (err) {
-                    setError("Failed to save billing settings. " + err.message);
-                } finally {
-                    setIsSaving(false);
-                }
-            };
-
-            if (isLoading) {
-                return <p className="text-gray-600">Loading billing settings...</p>;
-            }
-
-            return (
-                <React.Fragment>
-                    <div className="flex items-center space-x-3">
-                        <BillingIcon />
-                        <h2 className="text-2xl font-semibold text-gray-800">Step 6: Billing Settings</h2>
-                    </div>
-                    <p className="mt-2 text-sm text-gray-600">
-                        Set the default currency, tax rate, and invoicing day for this location.
-                    </p>
-                    <form onSubmit={handleSave} className="mt-6 space-y-6">
-                        {error && <p className="text-sm font-medium text-red-700">{error}</p>}
-                        {status && <p className="text-sm font-medium text-green-700">{status}</p>}
-                        <SelectField
-                            id="CurrencyId"
-                            name="CurrencyId"
-                            label="Currency"
-                            value={formData.CurrencyId}
-                            onChange={handleChange}
-                        >
-                            <option value="">-- Select Currency --</option>
-                            {currencies.map(c => (
-                                <option key={c.Id} value={c.Id}>{c.Name} ({c.Symbol})</option>
-                            ))}
-                        </SelectField>
-                        <InputField
-                            id="TaxRate"
-                            name="TaxRate"
-                            label="Default Tax Rate (%)"
-                            type="number"
-                            step="0.01"
-                            value={formData.TaxRate}
-                            onChange={handleChange}
-                            placeholder="e.g., 20"
-                            icon={<span className="text-gray-400 pl-3">%</span>}
-                        />
-                        <SelectField
-                            id="DefaultInvoicingDay"
-                            name="DefaultInvoicingDay"
-                            label="Default Invoicing Day of Month"
-                            value={formData.DefaultInvoicingDay}
-                            onChange={handleChange}
-                        >
-                            {Array.from({ length: 28 }, (_, i) => i + 1).map(day => (
-                                <option key={day} value={day}>{day}</option>
-                            ))}
-                        </SelectField>
-                        <div className="flex flex-col space-y-4 pt-6 sm:flex-row-reverse sm:justify-between sm:space-y-0">
-                            <button
-                                type="submit"
-                                disabled={isSaving}
-                                className="flex w-full justify-center rounded-md border border-transparent bg-nex-orange py-3 px-4 text-sm font-medium text-white shadow-sm hover:bg-nex-orange-dark focus:outline-none focus:ring-2 focus:ring-nex-orange focus:ring-offset-2 sm:w-auto"
-                            >
-                                {isSaving ? "Saving..." : "Save & Finish"}
-                            </button>
-                            <button
-                                type="button"
-                                onClick={onBack}
-                                disabled={isSaving}
-                                className="flex w-full justify-center rounded-md border border-gray-300 bg-white py-3 px-4 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-gray-400 focus:ring-offset-2 sm:w-auto"
-                            >
-                                &larr; Back to Opening Times
-                            </button>
-                        </div>
-                    </form>
-                </React.Fragment>
-            );
-        };
-        
-        /**
-         * Stage 7: Calendly Booking
-         */
-        const CalendlyStage = ({ onBack }) => (
-            <>
-                <div className="flex items-center space-x-3">
-                    <CalendarIcon />
-                    <h2 className="text-2xl font-semibold text-gray-800">Book your call</h2>
-                </div>
-                <p className="mt-2 text-sm text-gray-600">
-                    Find a time that works for you and our team will take the lead.
-                </p>
-                
-                {/* Calendly embed - reduced height */}
-                <div className="mt-6" style={{ height: '650px', overflow: 'hidden' }}>
-                    <iframe
-                        src="https://calendly.com/sam-nexudus/sam-nexudus-60mins-aus"
-                        width="100%"
-                        height="650"
-                        frameBorder="0"
-                    ></iframe>
-                </div>
-
-                <div className="flex justify-start pt-8">
-                    <button
-                        type="button"
-                        onClick={onBack}
-                        className="flex w-full justify-center rounded-md border border-gray-300 bg-white py-3 px-4 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-gray-400 focus:ring-offset-2 sm:w-auto"
-                    >
-                        &larr; Back to Wizard
-                    </button>
-                </div>
-            </>
-        );
-
-
-// --- Main App Component ---
-        function App() {
-            const [stage, setStage] = useState(1); // 1: Welcome, 2: Choice, 3: Auth, 4: Select, 5: Times, 6: Billing, 7: Calendly
-            const [previousStage, setPreviousStage] = useState(1);
-            const [authData, setAuthData] = useState({ email: "", password: "" });
-            const [businesses, setBusinesses] = useState([]);
-            const [selectedBusinessId, setSelectedBusinessId] = useState(null);
-
-            const handleAuthSuccess = (newAuthData, fetchedBusinesses) => {
-                setAuthData(newAuthData);
-                setBusinesses(fetchedBusinesses);
-                setStage(4); // Go to Selection
-            };
-
-            const handleSelectBusiness = (businessId) => {
-                setSelectedBusinessId(businessId);
-                setStage(5); // Go to Opening Times
-            };
-            
-            const handleBookCall = () => {
-                setPreviousStage(stage); // Store current stage
-                setStage(7); // Go to Calendly
-            };
-
-            const renderStage = () => {
-                // We wrap stages in a div with a max-width,
-                // which can be customized per-stage.
-                let stageContent;
-                let maxWidth = "max-w-3xl"; // Default width for most stages
-
-                switch (stage) {
-                    case 1:
-                        stageContent = <WelcomeStage onNext={() => setStage(2)} />; // Go to Choice
-                        break;
-                    case 2:
-                        stageContent = <OnboardingChoiceStage onChoice={setStage} onBack={() => setStage(1)} />; // Go to Welcome
-                        maxWidth = "max-w-5xl"; // 3-card layout needs to be wide
-                        break;
-                    case 3:
-                        stageContent = <AuthStage authData={authData} setAuthData={setAuthData} onAuthSuccess={handleAuthSuccess} onBack={() => setStage(2)} />; // Go to Choice
-                        maxWidth = "max-w-2xl"; // Auth stage is narrow
-                        break;
-                    case 4:
-                        stageContent = <SelectionStage businesses={businesses} onSelect={handleSelectBusiness} onBack={() => setStage(3)} />; // Go to Auth
-                        maxWidth = "max-w-2xl"; // Selection stage is narrow
-                        break;
-                    case 5:
-                        stageContent = <OpeningTimesStage businessId={selectedBusinessId} authData={authData} onNext={() => setStage(6)} onBack={() => setStage(4)} />; // Go to Billing
-                        maxWidth = "max-w-4xl"; // Opening times grid is wide
-                        break;
-                    case 6:
-                        stageContent = <BillingSettingsStage businessId={selectedBusinessId} authData={authData} onBack={() => setStage(5)} />; // Go to Opening Times
-                        maxWidth = "max-w-2xl"; // Billing stage is narrow
-                        break;
-                    case 7: // New Calendly Stage
-                        stageContent = <CalendlyStage onBack={() => setStage(previousStage)} />;
-                        maxWidth = "max-w-5xl"; // Calendly embed needs to be wide
-                        break;
-                    default:
-                        stageContent = <p>Error: Unknown stage.</p>;
-                        maxWidth = "max-w-lg";
-                }
-                
-                return { stageContent, maxWidth }; // Return as object
-            };
-            
-            const { stageContent, maxWidth } = renderStage();
-
-            return (
-                // Changed items-center to items-start and added padding-top
-                <div className="flex min-h-screen w-full items-start justify-center bg-gray-100 p-4 pt-12">
-                    {/* Widened the main container for the card layout */}
-                    <div className="w-full max-w-5xl overflow-hidden rounded-lg bg-white shadow-xl">
-                        <div className="p-8 sm:p-12">
-                            <div className="mb-8 flex justify-center">
-                                <img
-                                    src="https://nexudusacademy.spaces.nexudus.com//images/Logo.png"
-                                    alt="Nexudus Logo"
-                                    className="h-10 w-auto"
-                                />
-                            </div>
-                            <h1 className="mb-6 text-center text-3xl font-bold text-nex-blue">
-                                Onboarding Wizard
-                            </h1>
-                            
-                            {/* Main Content Area with Tooltip */}
-                            <div className="relative">
-                                {/* Show tooltip on guided flow stages (3, 4, 5, 6) */}
-                                {stage >= 3 && stage <= 6 && (
-                                    <ExpertTooltip onBookCall={handleBookCall} />
-                                )}
-                                
-                                {/* The renderStage function now returns the content */}
-                                <div className={`mx-auto ${maxWidth}`}>
-                                    {stageContent}
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            );
+            return true;
         }
 
-        // 5. Mount the React App to the DOM
-        const root = ReactDOM.createRoot(document.getElementById('root'));
-        root.render(<App />);
+        async function testAuth() {
+            log('Testing authentication credentials...', 'info');
+            const authButton = document.getElementById('authButton');
+            authButton.disabled = true;
+
+            const isSet = await setAuthHeader();
+            if (!isSet) {
+                log('Error: Please enter your credentials.', 'error');
+                authButton.disabled = false;
+                return;
+            }
+
+            try {
+                // Use a generic, low-impact GET endpoint to test credentials
+                const response = await fetch('https://spaces.nexudus.com/api/spaces/coworkers?PageSize=1', {
+                    method: 'GET',
+                    headers: { 'Authorization': authHeader }
+                });
+
+                if (response.ok) {
+                    isAuthenticated = true;
+                    log('Authentication successful! You can now proceed to Step 2.', 'success');
+                    // Step 2 and 3 are now revealed
+                    document.getElementById('step2and3').style.display = 'block'; 
+                } else {
+                    isAuthenticated = false;
+                    log(`Authentication failed. Status: ${response.status}. Please check your credentials.`, 'error');
+                }
+            } catch (error) {
+                isAuthenticated = false;
+                log(`Authentication failed: ${error.message || 'Network error.'}`, 'error');
+            }
+            authButton.disabled = false;
+            checkStartButtonValidity();
+        }
+        
+        function checkAuthButtonValidity() {
+            const authButton = document.getElementById('authButton');
+            const usernameInput = document.getElementById('username');
+            const passwordInput = document.getElementById('password');
+            const isAuthProvided = usernameInput.value !== '' && passwordInput.value !== '';
+            
+            authButton.disabled = !isAuthProvided;
+        }
+
+        function checkStartButtonValidity() {
+            const recordTypeSelect = document.getElementById('recordType');
+            const customEndpointInput = document.getElementById('apiEndpoint');
+            const getTemplateButton = document.getElementById('getTemplateButton');
+            const startButton = document.getElementById('startButton');
+            const httpMethod = document.getElementById('httpMethod').value;
+            
+            const isEndpointSelected = recordTypeSelect.value !== '' && recordTypeSelect.value !== 'custom';
+            const isCustomEndpointEntered = recordTypeSelect.value === 'custom' && customEndpointInput.value !== '';
+            const isApiReady = isEndpointSelected || isCustomEndpointEntered;
+            
+            if(getTemplateButton) getTemplateButton.disabled = !isAuthenticated || !isApiReady;
+            if(startButton) startButton.disabled = !isAuthenticated || !isApiReady;
+            if (startButton) {
+                startButton.textContent = httpMethod === 'GET' ? 'Start Get' : 'Start Process';
+            }
+        }
+        
+        function toggleAuthFields() {
+            const basicAuthDiv = document.getElementById('basicAuthFields');
+            const oauth2AuthDiv = document.getElementById('oauth2AuthFields');
+            
+            basicAuthDiv.style.display = 'block';
+            oauth2AuthDiv.style.display = 'none';
+            checkAuthButtonValidity();
+        }
+
+        function handleRecordTypeChange() {
+            const selectElement = document.getElementById('recordType');
+            const customInputDiv = document.getElementById('customEndpointInput');
+            const selectedEndpointValueSpan = document.getElementById('selectedEndpointValue');
+            
+            if (selectElement.value === 'custom') {
+                if(customInputDiv) customInputDiv.style.display = 'block';
+                if(selectedEndpointValueSpan) selectedEndpointValueSpan.textContent = 'Custom';
+            } else if (selectElement.value === '') {
+                if(customInputDiv) customInputDiv.style.display = 'none';
+                if(selectedEndpointValueSpan) selectedEndpointValueSpan.textContent = '';
+            } else {
+                if(customInputDiv) customInputDiv.style.display = 'none';
+                if(selectedEndpointValueSpan) selectedEndpointValueSpan.textContent = selectElement.value;
+            }
+            checkStartButtonValidity();
+        }
+
+        function handleCustomEndpointChange() {
+            const customEndpointInput = document.getElementById('apiEndpoint');
+            const selectedEndpointValueSpan = document.getElementById('selectedEndpointValue');
+
+            if(selectedEndpointValueSpan) selectedEndpointValueSpan.textContent = customEndpointInput.value || 'Custom';
+            checkStartButtonValidity();
+        }
+
+        function toggleGuide() {
+            const guide = document.getElementById('updateGuide');
+            const button = document.getElementById('toggleGuideButton');
+            if (guide && button) {
+                if (guide.style.display === 'block') {
+                    guide.style.display = 'none';
+                    button.textContent = 'Show Guide';
+                } else {
+                    guide.style.display = 'block';
+                    button.textContent = 'Hide Guide';
+                }
+            }
+        }
+
+        function stopProcessing() {
+            isProcessing = false;
+            log('Processing stopped by user.', 'error');
+            const startButton = document.getElementById('startButton');
+            const stopButton = document.getElementById('stopButton');
+            const proceedButton = document.getElementById('proceedButton');
+            const getTemplateButton = document.getElementById('getTemplateButton');
+
+            if (startButton) startButton.disabled = false;
+            if (getTemplateButton) getTemplateButton.disabled = false;
+            if (stopButton) stopButton.style.display = 'none';
+            if (proceedButton) proceedButton.style.display = 'none';
+            
+            if (proceedResolver) {
+                proceedResolver();
+                proceedResolver = null;
+            }
+        }
+
+        function updateProgressBar(count, total) {
+            const progressBar = document.getElementById('progressBar');
+            const progressStatus = document.getElementById('progressStatus');
+            if (progressBar && progressStatus) {
+                const percentage = (count / total) * 100;
+                progressBar.style.width = `${percentage}%`;
+                progressStatus.textContent = `Progress: ${count} of ${total} records processed.`;
+            }
+        }
+
+        /**
+         * Fetches the IANA timezone identifier for a given location.
+         * ... (Rest of function remains unchanged)
+         */
+        async function getBusinessTimeZoneByLocation(locationId) {
+            if (businessTimeZoneCache[locationId]) {
+                log(`Using cached timezone for Location ID: ${locationId}`, 'info');
+                return businessTimeZoneCache[locationId];
+            }
+
+            // Updated API endpoint to use the specific locationId
+            const businessApiUrl = `https://spaces.nexudus.com/api/sys/businesses/${locationId}`;
+            
+            try {
+                const businessResponse = await fetch(businessApiUrl, {
+                    method: 'GET',
+                    headers: { 'Authorization': authHeader }
+                });
+
+                if (!businessResponse.ok) {
+                    const errorText = await businessResponse.text();
+                    throw new Error(`Failed to fetch business for Location ID ${locationId}. Status: ${businessResponse.status}. Message: ${errorText}`);
+                }
+                const businessData = await businessResponse.json();
+                
+                const simpleTimeZoneId = businessData.SimpleTimeZoneId;
+                
+                if (!simpleTimeZoneId) {
+                    throw new Error('Could not find SimpleTimeZoneId in the business record.');
+                }
+
+                const timeZoneApiUrl = `https://spaces.nexudus.com/api/sys/simpletimezones/${simpleTimeZoneId}`;
+                const timezoneResponse = await fetch(timeZoneApiUrl, {
+                    method: 'GET',
+                    headers: { 'Authorization': authHeader }
+                });
+
+                if (!timezoneResponse.ok) {
+                    const errorText = await timezoneResponse.text();
+                    throw new Error(`Failed to fetch timezone details for SimpleTimeZoneId ${simpleTimeZoneId}. Status: ${timezoneResponse.status}. Message: ${errorText}`);
+                }
+                const timezoneData = await timezoneResponse.json();
+                
+                if (!timezoneData.Iana) {
+                    throw new Error('Could not find Iana identifier in timezone details.');
+                }
+
+                log(`Timezone found for Location ID ${locationId}: ${timezoneData.Iana}`, 'info');
+                
+                businessTimeZoneCache[locationId] = timezoneData.Iana;
+                return timezoneData.Iana;
+
+            } catch (error) {
+                log(`Error fetching timezone data for location ${locationId}: ${error.message}`, 'error');
+                return null;
+            }
+        }
+        
+        async function getRecordData(endpoint, id) {
+            try {
+                const getEndpoint = `${endpoint}/${id}`;
+                const response = await fetch(getEndpoint, {
+                    method: 'GET',
+                    headers: { 'Authorization': authHeader }
+                });
+                if (response.ok) {
+                    return await response.json();
+                } else {
+                    return null;
+                }
+            } catch (error) {
+                return null;
+            }
+        }
+
+        async function getRecordDataAndDiscoverArrays(endpoint, id) {
+            try {
+                const getEndpoint = `${endpoint}/${id}`;
+                const response = await fetch(getEndpoint, {
+                    method: 'GET',
+                    headers: { 'Authorization': authHeader }
+                });
+                if (response.ok) {
+                    const record = await response.json();
+                    
+                    for (const key in record) {
+                        if (Array.isArray(record[key])) {
+                            arrayFields.push(key);
+                        }
+                    }
+                    return record;
+                } else {
+                    return null;
+                }
+            } catch (error) {
+                return null;
+            }
+        }
+
+        function mergePayloads(basePayload, updatePayload) {
+            return { ...basePayload, ...updatePayload };
+        }
+
+        // START REVISED parseCSV FUNCTION TO HANDLE MULTI-LINE FIELDS
+        function parseCSV(csvText) {
+            const lines = csvText.split('\n');
+            if (lines.length < 1) return { headers: [], records: [] };
+            
+            let currentLine = '';
+            let inQuotes = false;
+            const logicalLines = [];
+
+            // 1. Re-assemble physical lines into logical records based on quotes
+            for (const line of lines) {
+                // Count quotes and handle escaped quotes ("")
+                let quoteCount = 0;
+                for (let i = 0; i < line.length; i++) {
+                    if (line[i] === '"') {
+                        if (i + 1 < line.length && line[i + 1] === '"') {
+                            i++; // Skip the next character if it's an escaped quote
+                        } else {
+                            quoteCount++;
+                        }
+                    }
+                }
+                
+                if (inQuotes) {
+                    // Append the line, adding a newline character back since we stripped it with split('\n')
+                    currentLine += '\n' + line; 
+                    if (quoteCount % 2 !== 0) {
+                         inQuotes = false; // End of multi-line quoted field
+                    }
+                } else {
+                    currentLine = line;
+                    if (quoteCount % 2 !== 0) {
+                        inQuotes = true; // Start of multi-line quoted field
+                    }
+                }
+
+                // If quotes are balanced (or we are not in quotes), push the complete logical line
+                if (!inQuotes) {
+                    if (currentLine.trim()) {
+                        logicalLines.push(currentLine.trim());
+                    }
+                    currentLine = '';
+                }
+            }
+            
+            // Handle any final remnants
+            if (currentLine.trim()) {
+                 logicalLines.push(currentLine.trim());
+            }
+
+            const cleanLines = logicalLines.filter(line => line !== '');
+            if (cleanLines.length < 1) return { headers: [], records: [] };
+            
+            // 2. Parse the fields in the logical lines
+            const parseLineFields = (line) => {
+                const values = [];
+                let current = '';
+                let inQuotes = false;
+                for (let i = 0; i < line.length; i++) {
+                    const char = line[i];
+
+                    if (char === '"') {
+                        // Handle escaped double quotes (CSV standard: "")
+                        if (inQuotes && line[i + 1] === '"') {
+                            current += '"';
+                            i++;
+                        } else {
+                            inQuotes = !inQuotes;
+                        }
+                    } else if (char === ',' && !inQuotes) {
+                        values.push(current.trim().replace(/^"|"$/g, '')); // Remove surrounding quotes during push
+                        current = '';
+                    } else {
+                        current += char;
+                    }
+                }
+                // Push the last value, removing any residual surrounding quotes
+                values.push(current.trim().replace(/^"|"$/g, '')); 
+                return values;
+            };
+
+            const headers = parseLineFields(cleanLines[0]).map(header => header.trim());
+            const records = [];
+            
+            for (let i = 1; i < cleanLines.length; i++) {
+                const line = cleanLines[i];
+                const values = parseLineFields(line);
+                const record = {};
+                
+                for (let j = 0; j < headers.length; j++) {
+                    // Only assign if value exists for the header
+                    record[headers[j]] = values[j] !== undefined ? values[j] : null;
+                }
+                records.push(record);
+            }
+            
+            return { headers, records };
+        }
+        // END REVISED parseCSV FUNCTION
+        
+        function createPayload(record, method, convertLocalToUtcFunc) {
+            const payload = {};
+            for (const key in record) {
+                if (method === 'POST' && key === 'Id') continue;
+                if (record[key] !== null && record[key] !== '') {
+                    const value = record[key];
+
+                    if (dateFields.includes(key)) {
+                        payload[key] = convertLocalToUtcFunc(value);
+                    } else if (arrayFields.includes(key)) {
+                        payload[key] = value.includes(';') ? value.split(';') : [value];
+                    } else if (!isNaN(value) && value.trim() !== '') {
+                        payload[key] = parseFloat(value);
+                    } else if (value.toLowerCase() === 'true' || value.toLowerCase() === 'false') {
+                        payload[key] = value.toLowerCase() === 'true';
+                    } else {
+                        payload[key] = value;
+                    }
+                }
+            }
+            return payload;
+        }
+
+        async function getTemplate() {
+            if (!isAuthenticated) {
+                log('Error: Please authenticate before getting a template.', 'error');
+                return;
+            }
+
+            const recordTypeSelect = document.getElementById('recordType');
+            const apiEndpoint = recordTypeSelect.value === 'custom' ? document.getElementById('apiEndpoint').value : recordTypeSelect.value;
+            
+            if (!apiEndpoint || apiEndpoint === '') {
+                log('Error: Please select or enter an API endpoint before getting a template.', 'error');
+                return;
+            }
+
+            log('Fetching sample record to create CSV template...', 'info');
+            try {
+                // Fetch a list of records to get a sample
+                const response = await fetch(apiEndpoint, {
+                    method: 'GET',
+                    headers: { 'Authorization': authHeader }
+                });
+
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    throw new Error(`Failed to fetch records. Status: ${response.status}. Message: ${errorText}`);
+                }
+
+                const data = await response.json();
+                let sampleRecord = null;
+                if (data.Records && data.Records.length > 0) {
+                    sampleRecord = data.Records[0];
+                } else if (data.length > 0) {
+                    // Handle cases where the response is a direct array of objects
+                    sampleRecord = data[0];
+                } else {
+                    log('No records found at this endpoint to generate a template. The API may require specific query parameters.', 'error');
+                    return;
+                }
+
+                // Exclude some fields that aren't typically updated via CSV
+                const excludedFields = ['CreatedOn', 'UpdatedOn'];
+                const headers = Object.keys(sampleRecord).filter(key => !excludedFields.includes(key));
+                
+                // Get the values for the first record and format for CSV
+                const values = headers.map(header => {
+                    let value = sampleRecord[header];
+                    if (value === null || value === undefined) {
+                        return '';
+                    }
+                    if (Array.isArray(value)) {
+                        return value.join(';');
+                    }
+                    if (typeof value === 'object') {
+                        // Stringify complex objects
+                        value = JSON.stringify(value);
+                    }
+                    // Wrap value in quotes if it contains commas
+                    if (typeof value === 'string' && value.includes(',')) {
+                        return `"${value.replace(/"/g, '""')}"`;
+                    }
+                    return value;
+                });
+
+                const csvString = `${headers.join(',')}\n${values.join(',')}`;
+                const blob = new Blob([csvString], { type: 'text/csv' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'api_template.csv';
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+                
+                log('CSV template generated and downloaded successfully.', 'success');
+
+            } catch (error) {
+                log(`Error creating template: ${error.message}`, 'error');
+            }
+        }
+
+        function downloadResults(records, fileName) {
+            if (records.length === 0) return;
+
+            // Get all unique headers from all records
+            const allHeaders = new Set();
+            records.forEach(record => {
+                Object.keys(record).forEach(key => allHeaders.add(key));
+            });
+
+            const headerArray = Array.from(allHeaders).sort();
+            const csvRows = [headerArray.join(',')];
+
+            for (const record of records) {
+                const row = headerArray.map(header => {
+                    let value = record[header] || '';
+                    if (Array.isArray(value)) {
+                        value = value.join(';');
+                    }
+                    if (typeof value === 'object') {
+                        value = JSON.stringify(value);
+                    }
+                    // Escape double quotes and enclose in quotes if needed
+                    if (typeof value === 'string' && (value.includes(',') || value.includes('"') || value.includes('\n'))) {
+                        return `"${value.replace(/"/g, '""')}"`;
+                    }
+                    return value;
+                });
+                csvRows.push(row.join(','));
+            }
+
+            const csvString = csvRows.join('\n');
+            const blob = new Blob([csvString], { type: 'text/csv' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = fileName;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+
+        async function startUpdate() {
+            if (!isAuthenticated) {
+                log('Error: Please authenticate first.', 'error');
+                return;
+            }
+
+            const recordTypeSelect = document.getElementById('recordType');
+            const csvFile = document.getElementById('csvFile').files[0];
+            const startButton = document.getElementById('startButton');
+            const stopButton = document.getElementById('stopButton');
+            const getTemplateButton = document.getElementById('getTemplateButton');
+            
+            const apiEndpoint = recordTypeSelect.value === 'custom' ? document.getElementById('apiEndpoint').value : recordTypeSelect.value;
+            const httpMethod = document.getElementById('httpMethod').value;
+            isGetOperation = (httpMethod === 'GET');
+
+            if (!apiEndpoint) {
+                log('Error: Please enter an API Endpoint URL.', 'error');
+                endProcessing();
+                return;
+            }
+            if (!csvFile) {
+                log('Error: Please upload a CSV file.', 'error');
+                endProcessing();
+                return;
+            }
+
+            log(`Processing started with method ${httpMethod}...`, 'info');
+            startButton.disabled = true;
+            if(getTemplateButton) getTemplateButton.disabled = true;
+            stopButton.style.display = 'inline-block';
+            isProcessing = true;
+            processedCount = 0; // Reset progress counter
+            fetchedRecords = []; // Reset fetched records for GET operation
+            failedRecords = []; // Reset failed records
+
+            const reader = new FileReader();
+            reader.onload = async function(event) {
+                const csvText = event.target.result;
+                const { headers, records } = parseCSV(csvText);
+                allRecords = records;
+                
+                if (allRecords.length === 0) {
+                    log('Error: CSV file is empty or could not be parsed.', 'error');
+                    endProcessing();
+                    return;
+                }
+                
+                if (!headers.includes('Id') && httpMethod !== 'POST') {
+                    log('Error: CSV file is missing the required "Id" column. Aborting.', 'error');
+                    endProcessing();
+                    return;
+                }
+                
+                // Only perform array discovery for PUT requests
+                if (httpMethod === 'PUT') {
+                    const recordToDiscover = allRecords[0];
+                    if (recordToDiscover && recordToDiscover['Id']) {
+                        log(`Performing initial GET request to discover array fields on ID ${recordToDiscover['Id']}...`, 'info');
+                        await getRecordDataAndDiscoverArrays(apiEndpoint, recordToDiscover['Id']);
+                        if (arrayFields.length > 0) {
+                            log(`Discovered array fields: ${arrayFields.join(', ')}`, 'info');
+                        } else {
+                            log('No array fields discovered in the sample record.', 'info');
+                        }
+                    }
+                }
+                
+                log(`Starting batch process for ${allRecords.length} records.`, 'info');
+                await processRecords(allRecords);
+                endProcessing();
+            };
+            reader.readAsText(csvFile);
+        }
+
+        async function processRecords(recordsToProcess) {
+            const apiEndpoint = document.getElementById('recordType').value === 'custom' ? document.getElementById('apiEndpoint').value : document.getElementById('recordType').value;
+            const httpMethod = document.getElementById('httpMethod').value;
+            const totalRecords = allRecords.length;
+            const proceedButton = document.getElementById('proceedButton');
+            const stopButton = document.getElementById('stopButton');
+
+            for (const record of recordsToProcess) {
+                if (!isProcessing) break;
+                
+                const recordId = record['Id'];
+                if (!recordId && httpMethod !== 'POST') {
+                     log(`Error: Skipping record as 'Id' column is required for this method.`, 'error');
+                     failedRecords.push({ ...record, ErrorMessage: 'Id is required for this method.' });
+                     processedCount++;
+                     updateProgressBar(processedCount, totalRecords);
+                     continue;
+                }
+
+                let targetEndpoint = apiEndpoint;
+                let finalHttpMethod = httpMethod;
+                let fetchOptions = {};
+                
+                if (httpMethod === 'GET') {
+                    targetEndpoint = `${apiEndpoint}/${recordId}`;
+                    fetchOptions = { method: finalHttpMethod, headers: { 'Authorization': authHeader } };
+                } 
+                else if (httpMethod === 'DELETE') {
+                    // Check if it's the known runcommand endpoint for Coworkers
+                    if (apiEndpoint.endsWith('/api/spaces/coworkers')) {
+                        // Override to POST runcommand pattern
+                        finalHttpMethod = 'POST';
+                        targetEndpoint = `${apiEndpoint}/runcommand`;
+
+                        fetchOptions = {
+                            method: finalHttpMethod,
+                            headers: { 'Content-Type': 'application/json', 'Authorization': authHeader },
+                            body: JSON.stringify({
+                                Ids: [parseInt(recordId)],
+                                Key: 'COWORKER_DELETE'
+                            })
+                        };
+                        log(`Processing Coworker ID ${recordId} for deletion via POST runcommand...`, 'info');
+                    } else {
+                        // Fallback to standard DELETE /{id} for all other endpoints
+                        targetEndpoint = `${apiEndpoint}/${recordId}`;
+                        fetchOptions = { method: finalHttpMethod, headers: { 'Authorization': authHeader } };
+                    }
+                } 
+                else if (httpMethod === 'PUT' || httpMethod === 'POST') {
+                    if (!record['LocationId']) {
+                        log(`Error: Skipping record as 'LocationId' is required for this method.`, 'error');
+                        failedRecords.push({ ...record, ErrorMessage: 'LocationId is required for this method.' });
+                        processedCount++;
+                        updateProgressBar(processedCount, totalRecords);
+                        continue;
+                    }
+                    
+                    log(`Processing record for LocationId: ${record.LocationId || 'N/A'}...`, 'info');
+                    let businessTimeZoneId;
+                    if (businessTimeZoneCache[record.LocationId]) {
+                        businessTimeZoneId = businessTimeZoneCache[record.LocationId];
+                    } else {
+                        businessTimeZoneId = await getBusinessTimeZoneByLocation(record.LocationId);
+                        if (!businessTimeZoneId) {
+                            log(`Failed to retrieve timezone for Location ID ${record.LocationId}. Skipping this record.`, 'error');
+                            failedRecords.push({ ...record, ErrorMessage: 'Failed to retrieve timezone for this location.' });
+                            processedCount++;
+                            updateProgressBar(processedCount, totalRecords);
+                            continue;
+                        }
+                    }
+
+                    const convertLocalToUtc = (dateString) => {
+                        const { DateTime } = luxon;
+                        const format = 'yyyy-MM-dd HH:mm';
+                        // If already ISO, skip conversion
+                        if (DateTime.fromISO(dateString).isValid) { return dateString; }
+                        
+                        const localDateTime = DateTime.fromFormat(dateString, format, { zone: businessTimeZoneId });
+                        if (localDateTime.isValid) {
+                            const utcDateTime = localDateTime.toUTC().toISO({ includeOffset: false, suppressMilliseconds: true });
+                            return utcDateTime;
+                        }
+                        return dateString;
+                    };
+
+                    let payload = {};
+                    if (httpMethod === 'PUT') {
+                        log(`Fetching existing record for ID ${recordId}...`, 'info');
+                        // Fetch the existing record using the ID in the URL (standard GET behavior)
+                        const existingRecord = await getRecordData(apiEndpoint, recordId); 
+                        if (!existingRecord) {
+                            const errorMsg = `Could not fetch existing record for ID ${recordId}.`;
+                            log(`Error: ${errorMsg}`, 'error');
+                            failedRecords.push({ ...record, ErrorMessage: errorMsg });
+                            processedCount++;
+                            updateProgressBar(processedCount, totalRecords);
+                            continue;
+                        }
+                        // Merge existing data with CSV updates, sending the entire object to the base URL (Nexudus PUT pattern)
+                        payload = mergePayloads(existingRecord, createPayload(record, httpMethod, convertLocalToUtc));
+                    } else { // POST
+                        payload = createPayload(record, httpMethod, convertLocalToUtc);
+                    }
+                    
+                    // POST/PUT requests are sent to the base URL
+                    fetchOptions = {
+                        method: finalHttpMethod,
+                        headers: { 'Content-Type': 'application/json', 'Authorization': authHeader },
+                        body: JSON.stringify(payload)
+                    };
+                }
+
+                try {
+                    log(`Sending request to: ${targetEndpoint}`, 'info');
+                    const response = await fetch(targetEndpoint, fetchOptions);
+
+                    if (response.ok) {
+                        if (httpMethod === 'GET') {
+                            const data = await response.json();
+                            fetchedRecords.push(data);
+                            log(`Success: Details for Record ID ${recordId} fetched.`, 'success');
+                        } else {
+                            log(`Success: Record ID ${recordId || 'new record'} processed successfully with method ${httpMethod}.`, 'success');
+                        }
+                    } else {
+                        const errorText = await response.text();
+                        log(`Error: Failed to process Record ID ${recordId || 'new record'} with method ${httpMethod}. Status: ${response.status}. Message: ${errorText}`, 'error');
+                        failedRecords.push({ ...record, ErrorMessage: errorText });
+                    }
+                } catch (error) {
+                    const errorMsg = error.message || 'Network error.';
+                    log(`Error: Failed to send request for Record ID ${recordId || 'new record'}. Message: ${errorMsg}`, 'error');
+                    failedRecords.push({ ...record, ErrorMessage: errorMsg });
+                }
+                
+                processedCount++;
+                updateProgressBar(processedCount, totalRecords);
+
+                if (processedCount === 1 && isProcessing && !isGetOperation) {
+                    isProcessing = false;
+                    log('First record processed. Please check the Nexudus Admin Panel to confirm the changes before proceeding. Click "Proceed" to continue or "Stop Processing" to cancel the rest of the batch.', 'info');
+                    
+                    proceedButton.style.display = 'inline-block';
+                    stopButton.style.display = 'inline-block';
+
+                    await new Promise(resolve => {
+                        proceedResolver = resolve;
+                        proceedButton.onclick = () => {
+                            isProcessing = true;
+                            proceedButton.style.display = 'none';
+                            log('Proceeding with the rest of the records...', 'info');
+                            resolve();
+                        };
+                        stopButton.onclick = () => {
+                            isProcessing = false;
+                            proceedButton.style.display = 'none';
+                            stopButton.style.display = 'none';
+                            log('Processing stopped by user. No more records will be processed.', 'error');
+                            resolve();
+                        };
+                    });
+
+                    if (!isProcessing) break;
+                }
+
+                if (isProcessing) {
+                    await new Promise(resolve => setTimeout(resolve, requestDelay));
+                }
+            }
+        }
+        
+        function endProcessing() {
+            log('Processing complete!', 'info');
+            isProcessing = false;
+            document.getElementById('startButton').disabled = false;
+            document.getElementById('stopButton').style.display = 'none';
+            document.getElementById('proceedButton').style.display = 'none';
+            document.getElementById('downloadButton').style.display = 'block';
+
+            const downloadButton = document.getElementById('downloadButton');
+            
+            if (isGetOperation) {
+                if (fetchedRecords.length > 0) {
+                    downloadButton.textContent = 'Download Results';
+                    downloadButton.onclick = () => downloadResults(fetchedRecords, 'api_get_results.csv');
+                    log(`\nSuccessfully retrieved details for ${fetchedRecords.length} record(s). Click "Download Results" to get the details.`, 'success');
+                } else {
+                    downloadButton.style.display = 'none';
+                    log('\nNo records were successfully retrieved.', 'error');
+                }
+                if (failedRecords.length > 0) {
+                     log(`\n${failedRecords.length} record(s) failed to retrieve. Check the log for details.`, 'error');
+                     downloadButton.textContent += ' & Failed';
+                     const originalOnClick = downloadButton.onclick;
+                     if(originalOnClick) {
+                         downloadButton.onclick = () => {
+                             originalOnClick();
+                             downloadResults(failedRecords.map(r => ({ ...r, FailedReason: r.ErrorMessage })), 'failed_get_requests.csv');
+                         };
+                     } else {
+                         downloadButton.textContent = 'Download Failed Records';
+                         downloadButton.onclick = () => downloadResults(failedRecords.map(r => ({ ...r, FailedReason: r.ErrorMessage })), 'failed_get_requests.csv');
+                     }
+                }
+            } else { // PUT, POST, DELETE
+                downloadButton.textContent = 'Download Failed Records';
+                downloadButton.onclick = () => downloadResults(failedRecords.map(r => ({ ...r, FailedReason: r.ErrorMessage })), 'failed_api_updates.csv');
+                if (failedRecords.length > 0) {
+                    log(`\n${failedRecords.length} record(s) failed to update. Click "Download Failed Records" to get the details.`, 'error');
+                } else {
+                    downloadButton.style.display = 'none';
+                }
+            }
+        }
+        // Initial call to set up the fields based on the default radio button selection
+        window.onload = toggleAuthFields;
     </script>
 </body>
 </html>
