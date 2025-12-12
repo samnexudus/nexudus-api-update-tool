@@ -239,6 +239,7 @@
                     <ul>
                         <li><strong>Lists of items</strong> will be correctly processed as a JSON array, but only if they are separated by a <strong>semicolon (;)</strong>. Do not use a comma to separate lists! For example, <code>Desks: Desk1;Desk2</code>.</li>
                         <li><strong>Dates</strong> should be formatted in UTC as <code>yyyy-mm-dd hh:mm</code>. The tool will handle the conversion to the correct API format.</li>
+                        <li>To <strong>clear an existing value</strong> (set it to <code>null</code>), use the text **<code>[NULL]</code>** in the corresponding CSV cell.</li>
                     </ul>
                 </li>
             </ol>
@@ -292,7 +293,6 @@
                     <option value="">-- Select a record type --</option>
                     <option value="https://spaces.nexudus.com/api/spaces/bookings">Bookings</option>
                     <option value="https://spaces.nexudus.com/api/spaces/bookingproducts">Booking Products</option>
-                    <option value="https://spaces.nexudus.com/api/spaces/bookingvisitors">Booking Visitors</option>
                     <option value="https://spaces.nexudus.com/api/billing/contractcontacts">Contract Contact - Virtual Offices</option>
                     <option value="https://spaces.nexudus.com/api/billing/contractdeposits">Contract Deposit</option>
                     <option value="https://spaces.nexudus.com/api/billing/contractproducts">Contract Products</option>
@@ -397,6 +397,7 @@
         }
         
         async function setAuthHeader() {
+            // Since auth method choice is hidden, we assume basic auth is the default and only choice.
             const authMethod = 'basic'; // Hardcoding to basic since choice is hidden.
             if (authMethod === 'basic') {
                 const username = document.getElementById('username').value;
@@ -452,6 +453,7 @@
         }
         
         function checkAuthButtonValidity() {
+            // Since auth method is hidden, we explicitly check only basic fields
             const authButton = document.getElementById('authButton');
             const usernameInput = document.getElementById('username');
             const passwordInput = document.getElementById('password');
@@ -659,7 +661,6 @@
             return { ...basePayload, ...updatePayload };
         }
 
-        // START REVISED parseCSV FUNCTION TO HANDLE MULTI-LINE FIELDS
         function parseCSV(csvText) {
             const lines = csvText.split('\n');
             if (lines.length < 1) return { headers: [], records: [] };
@@ -757,26 +758,37 @@
             
             return { headers, records };
         }
-        // END REVISED parseCSV FUNCTION
         
         function createPayload(record, method, convertLocalToUtcFunc) {
             const payload = {};
             for (const key in record) {
                 if (method === 'POST' && key === 'Id') continue;
-                if (record[key] !== null && record[key] !== '') {
-                    const value = record[key];
+                
+                const rawValue = record[key];
 
-                    if (dateFields.includes(key)) {
-                        payload[key] = convertLocalToUtcFunc(value);
-                    } else if (arrayFields.includes(key)) {
-                        payload[key] = value.includes(';') ? value.split(';') : [value];
-                    } else if (!isNaN(value) && value.trim() !== '') {
-                        payload[key] = parseFloat(value);
-                    } else if (value.toLowerCase() === 'true' || value.toLowerCase() === 'false') {
-                        payload[key] = value.toLowerCase() === 'true';
-                    } else {
-                        payload[key] = value;
-                    }
+                // Check for null command or empty string/null value
+                if (rawValue === '[NULL]') {
+                    payload[key] = null; // Explicitly send JSON null
+                    continue; // Move to next field
+                }
+                
+                // If the value is explicitly null or an empty string, we omit it (standard behavior)
+                if (rawValue === null || rawValue === '') {
+                    continue; 
+                }
+                
+                const value = rawValue;
+
+                if (dateFields.includes(key)) {
+                    payload[key] = convertLocalToUtcFunc(value);
+                } else if (arrayFields.includes(key)) {
+                    payload[key] = value.includes(';') ? value.split(';') : [value];
+                } else if (!isNaN(value) && value.trim() !== '') {
+                    payload[key] = parseFloat(value);
+                } else if (value.toLowerCase() === 'true' || value.toLowerCase() === 'false') {
+                    payload[key] = value.toLowerCase() === 'true';
+                } else {
+                    payload[key] = value;
                 }
             }
             return payload;
