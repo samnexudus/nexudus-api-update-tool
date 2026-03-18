@@ -362,7 +362,7 @@
         let fetchedRecords = [];
         const requestDelay = 1100; // 1.1 seconds delay between requests to respect rate limits
         let isProcessing = false;
-        let arrayFields = []; // Dynamically discovered array fields
+        let arrayFields = []; // Reverted: Let it dynamically discover, do not force BillingEmail
         let processedCount = 0;
         let authHeader = '';
         let proceedResolver = null;
@@ -373,7 +373,7 @@
         // List of fields that are expected to be dates
         const dateFields = [
             'StartDate', 'RenewalDate', 'InvoicedPeriod', 'CancellationDate', 
-            'PricePlanTermsAcceptedOn', 'UpdatedOn', 'CreatedOn'
+            'PricePlanTermsAcceptedOn', 'UpdatedOn', 'CreatedOn', 'ContractContractTerm'
         ];
 
         // Helper functions
@@ -644,7 +644,7 @@
                     const record = await response.json();
                     
                     for (const key in record) {
-                        if (Array.isArray(record[key])) {
+                        if (Array.isArray(record[key]) && !arrayFields.includes(key)) {
                             arrayFields.push(key);
                         }
                     }
