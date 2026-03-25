@@ -240,6 +240,7 @@
                         <li><strong>Lists of items</strong> will be correctly processed as a JSON array, but only if they are separated by a <strong>semicolon (;)</strong>. Do not use a comma to separate lists! For example, <code>Desks: Desk1;Desk2</code>.</li>
                         <li><strong>Dates</strong> should be formatted in UTC as <code>yyyy-mm-dd hh:mm</code>. The tool will handle the conversion to the correct API format.</li>
                         <li>To <strong>clear an existing value</strong> (set it to <code>null</code>), use the text **<code>[NULL]</code>** in the corresponding CSV cell.</li>
+                        <li>To update a <strong>Custom Field</strong>, use <code>CustomField_ID</code> as the CSV header (e.g., <code>CustomField_1414354510</code>).</li>
                     </ul>
                 </li>
             </ol>
@@ -759,8 +760,14 @@
             return { headers, records };
         }
         
-        function createPayload(record, method, convertLocalToUtcFunc) {
+        function createPayload(record, method, convertLocalToUtcFunc, existingRecord = null) {
             const payload = {};
+            
+            let customFieldsData = existingRecord && existingRecord.CustomFields && Array.isArray(existingRecord.CustomFields.Data)
+                                    ? JSON.parse(JSON.stringify(existingRecord.CustomFields.Data)) 
+                                    : [];
+            let hasCustomFieldUpdates = false;
+
             for (const key in record) {
                 if (method === 'POST' && key === 'Id') continue;
                 
@@ -768,6 +775,18 @@
 
                 // Check for null command or empty string/null value
                 if (rawValue === '[NULL]') {
+                    if (key.startsWith('CustomField_')) {
+                        const cfId = key.replace('CustomField_', '');
+                        const existingIndex = customFieldsData.findIndex(cf => cf.Name === cfId);
+                        if (existingIndex >= 0) {
+                            customFieldsData[existingIndex].Value = null;
+                        } else {
+                            customFieldsData.push({ Name: cfId, Value: null, Type: 'string' });
+                        }
+                        hasCustomFieldUpdates = true;
+                        continue;
+                    }
+                    
                     payload[key] = null; // Explicitly send JSON null
                     continue; // Move to next field
                 }
@@ -778,6 +797,18 @@
                 }
                 
                 const value = rawValue;
+
+                if (key.startsWith('CustomField_')) {
+                    const cfId = key.replace('CustomField_', '');
+                    const existingIndex = customFieldsData.findIndex(cf => cf.Name === cfId);
+                    if (existingIndex >= 0) {
+                        customFieldsData[existingIndex].Value = value;
+                    } else {
+                        customFieldsData.push({ Name: cfId, Value: value, Type: 'string' });
+                    }
+                    hasCustomFieldUpdates = true;
+                    continue;
+                }
 
                 if (dateFields.includes(key)) {
                     payload[key] = convertLocalToUtcFunc(value);
@@ -791,6 +822,12 @@
                     payload[key] = value;
                 }
             }
+
+            if (hasCustomFieldUpdates) {
+                payload.CustomFields = { Data: customFieldsData };
+                log(`Prepared CustomFields array with ${customFieldsData.length} item(s).`, 'info');
+            }
+
             return payload;
         }
 
@@ -1093,7 +1130,7 @@
                             continue;
                         }
                         // Merge existing data with CSV updates, sending the entire object to the base URL (Nexudus PUT pattern)
-                        payload = mergePayloads(existingRecord, createPayload(record, httpMethod, convertLocalToUtc));
+                        payload = mergePayloads(existingRecord, createPayload(record, httpMethod, convertLocalToUtc, existingRecord));
                     } else { // POST
                         payload = createPayload(record, httpMethod, convertLocalToUtc);
                     }
