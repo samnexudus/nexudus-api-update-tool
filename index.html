@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Nexudus Internal Update Tool (Beta)</title>
+    <title>Nexudus Internal Update Tool (Beta V260329)</title>
     <link rel="icon" href="https://nexudusacademy.spaces.nexudus.com//images/Favicon.jpg">
     <!-- Luxon library for timezone handling -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/luxon/3.4.4/luxon.min.js"></script>
@@ -218,7 +218,7 @@
         <div class="logo-container">
             <img src="https://nexudusacademy.spaces.nexudus.com//images/Logo.png?cache=2025-08-08T11:13:58+04:00" alt="Nexudus Logo" class="logo">
         </div>
-        <h1>Nexudus Internal Update Tool (Beta)</h1>
+        <h1>Nexudus Internal Update Tool <span style="font-size: 1.25rem; color: #6b7280; font-weight: normal;">(Beta V260329)</span></h1>
         <p class="warning-text"><i>Please only use this tool if you're confident in doing so. Making changes without full confidence can cause irreversible changes.</i></p>
 
         <p>This is a beta internal tool for authorized testers to perform batch API operations (PUT, POST, DELETE, GET) on Nexudus records. It processes a CSV file row-by-row, and all process activity is logged below. Failed records and successful GET results can be exported for review.</p>
@@ -262,25 +262,10 @@
 
         <!-- Authentication Section -->
         <h3>1. Authentication</h3>
-        <p>Enter the username and password for the Nexudus account you are making updates to. You should use the admin account that was created for you based on the access code log in, and then perform a forgotten password to obtain the password.</p>
-        <div class="form-group-inline" style="display: none;"> <!-- HIDDEN AUTH METHOD CHOICE -->
-            <label for="authMethod">Auth Method:</label>
-            <input type="radio" id="authMethodBasic" name="authMethod" value="basic" checked onchange="toggleAuthFields()">
-            <label for="authMethodBasic">Basic Auth</label>
-            <span id="oauthToggleContainer" style="display: none;">
-                <input type="radio" id="authMethodOAuth" name="authMethod" value="oauth2" onchange="toggleAuthFields()">
-                <label for="authMethodOAuth">OAuth2</label>
-            </span>
-        </div>
-        <div id="basicAuthFields">
-            <label for="username" class="font-medium text-gray-700">Username:</label>
-            <input type="text" id="username" oninput="checkAuthButtonValidity()">
-            <label for="password" class="font-medium text-gray-700">Password:</label>
-            <input type="password" id="password" oninput="checkAuthButtonValidity()">
-        </div>
-        <div id="oauth2AuthFields" style="display: none;">
-            <label for="oauth2Token" class="font-medium text-gray-700">OAuth2 Access Token:</label>
-            <input type="password" id="oauth2Token" oninput="checkAuthButtonValidity()">
+        <p>Enter your OAuth2 Access Token (Bearer token) to authenticate with the Nexudus API. This token is not stored.</p>
+        <div id="oauth2AuthFields">
+            <label for="bearerToken" class="font-medium text-gray-700">Access Token (Bearer):</label>
+            <input type="password" id="bearerToken" oninput="checkAuthButtonValidity()" placeholder="Paste your token here">
         </div>
         <button id="authButton" onclick="testAuth()" disabled>Test Authentication</button>
 
@@ -398,22 +383,11 @@
         }
         
         async function setAuthHeader() {
-            // Since auth method choice is hidden, we assume basic auth is the default and only choice.
-            const authMethod = 'basic'; // Hardcoding to basic since choice is hidden.
-            if (authMethod === 'basic') {
-                const username = document.getElementById('username').value;
-                const password = document.getElementById('password').value;
-                if (!username || !password) {
-                    return false;
-                }
-                authHeader = 'Basic ' + btoa(username + ':' + password);
-            } else if (authMethod === 'oauth2') {
-                const oauth2Token = document.getElementById('oauth2Token').value;
-                if (!oauth2Token) {
-                    return false;
-                }
-                authHeader = 'Bearer ' + oauth2Token;
+            const token = document.getElementById('bearerToken').value.trim();
+            if (!token) {
+                return false;
             }
+            authHeader = 'Bearer ' + token;
             return true;
         }
 
@@ -454,13 +428,9 @@
         }
         
         function checkAuthButtonValidity() {
-            // Since auth method is hidden, we explicitly check only basic fields
             const authButton = document.getElementById('authButton');
-            const usernameInput = document.getElementById('username');
-            const passwordInput = document.getElementById('password');
-            const isAuthProvided = usernameInput.value !== '' && passwordInput.value !== '';
-            
-            authButton.disabled = !isAuthProvided;
+            const tokenInput = document.getElementById('bearerToken');
+            authButton.disabled = tokenInput.value.trim() === '';
         }
 
         function checkStartButtonValidity() {
@@ -479,15 +449,6 @@
             if (startButton) {
                 startButton.textContent = httpMethod === 'GET' ? 'Start Get' : 'Start Process';
             }
-        }
-        
-        function toggleAuthFields() {
-            const basicAuthDiv = document.getElementById('basicAuthFields');
-            const oauth2AuthDiv = document.getElementById('oauth2AuthFields');
-            
-            basicAuthDiv.style.display = 'block';
-            oauth2AuthDiv.style.display = 'none';
-            checkAuthButtonValidity();
         }
 
         function handleRecordTypeChange() {
@@ -1245,8 +1206,6 @@
                 }
             }
         }
-        // Initial call to set up the fields based on the default radio button selection
-        window.onload = toggleAuthFields;
     </script>
 </body>
 </html>
