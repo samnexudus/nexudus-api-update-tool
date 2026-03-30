@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Nexudus Internal Update Tool (Beta V260329)</title>
+    <title>Nexudus Internal Update Tool (Beta V260330)</title>
     <link rel="icon" href="https://nexudusacademy.spaces.nexudus.com//images/Favicon.jpg">
     <!-- Luxon library for timezone handling -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/luxon/3.4.4/luxon.min.js"></script>
@@ -155,6 +155,17 @@
         #toggleGuideButton:hover {
             background-color: #374151;
         }
+        #tokenHelpButton {
+            background-color: #6b7280;
+            color: white;
+            height: 30px;
+            padding: 4px 12px;
+            font-size: 0.85rem;
+            margin-bottom: 15px;
+        }
+        #tokenHelpButton:hover {
+            background-color: #4b5563;
+        }
         #customEndpointInput {
             display: none;
         }
@@ -218,7 +229,7 @@
         <div class="logo-container">
             <img src="https://nexudusacademy.spaces.nexudus.com//images/Logo.png?cache=2025-08-08T11:13:58+04:00" alt="Nexudus Logo" class="logo">
         </div>
-        <h1>Nexudus Internal Update Tool <span style="font-size: 1.25rem; color: #6b7280; font-weight: normal;">(Beta V260329)</span></h1>
+        <h1>Nexudus Internal Update Tool <span style="font-size: 1.25rem; color: #6b7280; font-weight: normal;">(Beta V260330)</span></h1>
         <p class="warning-text"><i>Please only use this tool if you're confident in doing so. Making changes without full confidence can cause irreversible changes.</i></p>
 
         <p>This is a beta internal tool for authorized testers to perform batch API operations (PUT, POST, DELETE, GET) on Nexudus records. It processes a CSV file row-by-row, and all process activity is logged below. Failed records and successful GET results can be exported for review.</p>
@@ -263,6 +274,18 @@
         <!-- Authentication Section -->
         <h3>1. Authentication</h3>
         <p>Enter your OAuth2 Access Token (Bearer token) to authenticate with the Nexudus API. This token is not stored.</p>
+        <button id="tokenHelpButton" onclick="toggleTokenHelp()">How to find this?</button>
+        <div id="tokenHelp" class="collapsible-content">
+            <ol style="margin-top: 0; padding-left: 20px; color: #4b5563;">
+                <li>Login to account on admin panel</li>
+                <li>Inspect page and navigate to Network tab</li>
+                <li>Refresh page</li>
+                <li>Click any of the Nexudus related tasks that ran</li>
+                <li>Scroll down to find the Authorization section</li>
+                <li>Copy the Bearer token</li>
+            </ol>
+            <img src="https://nexudusacademy.spaces.nexudus.com//images/OAuth2.png?cache=2026-03-30T11:37:44+01:00" alt="Find Bearer Token Guide" style="max-width: 100%; border: 1px solid #d1d5db; border-radius: 8px; margin-top: 10px;">
+        </div>
         <div id="oauth2AuthFields">
             <label for="bearerToken" class="font-medium text-gray-700">Access Token (Bearer):</label>
             <input type="password" id="bearerToken" oninput="checkAuthButtonValidity()" placeholder="Paste your token here">
@@ -487,6 +510,20 @@
                 } else {
                     guide.style.display = 'block';
                     button.textContent = 'Hide Guide';
+                }
+            }
+        }
+
+        function toggleTokenHelp() {
+            const help = document.getElementById('tokenHelp');
+            const button = document.getElementById('tokenHelpButton');
+            if (help && button) {
+                if (help.style.display === 'block') {
+                    help.style.display = 'none';
+                    button.textContent = 'How to find this?';
+                } else {
+                    help.style.display = 'block';
+                    button.textContent = 'Hide Instructions';
                 }
             }
         }
