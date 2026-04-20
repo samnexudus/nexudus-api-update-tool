@@ -557,10 +557,6 @@
             }
         }
 
-        /**
-         * Fetches the IANA timezone identifier for a given location.
-         * ... (Rest of function remains unchanged)
-         */
         async function getBusinessTimeZoneByLocation(locationId) {
             if (businessTimeZoneCache[locationId]) {
                 log(`Using cached timezone for Location ID: ${locationId}`, 'info');
@@ -1143,7 +1139,24 @@
 
                 try {
                     log(`Sending request to: ${targetEndpoint}`, 'info');
-                    const response = await fetch(targetEndpoint, fetchOptions);
+
+                    let response;
+                    let rateLimitAttempt = 0;
+                    while (true) {
+                        response = await fetch(targetEndpoint, fetchOptions);
+
+                        if (response.status === 429) {
+                            if (!isProcessing) break;
+                            rateLimitAttempt++;
+                            const retryAfterHeader = response.headers.get('Retry-After');
+                            const waitSeconds = retryAfterHeader ? parseInt(retryAfterHeader, 10) : Math.min(10 * rateLimitAttempt, 60);
+                            log(`Rate limit hit for Record ID ${recordId || 'new record'}. Waiting ${waitSeconds}s before retrying (attempt ${rateLimitAttempt})...`, 'error');
+                            await new Promise(resolve => setTimeout(resolve, waitSeconds * 1000));
+                            if (!isProcessing) break;
+                            continue;
+                        }
+                        break;
+                    }
 
                     if (response.ok) {
                         if (httpMethod === 'GET') {
