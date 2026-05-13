@@ -347,6 +347,12 @@
         
         <button id="authButton" onclick="testAuth()" disabled>Test Authentication</button>
 
+        <div id="exportBusinessesSection" style="display:none;">
+            <h3>Export Businesses</h3>
+            <p>Download a CSV of all businesses in the network associated with this account.</p>
+            <button id="exportBusinessesButton" onclick="exportAllBusinesses()" style="background-color: #001279;">Export All Businesses</button>
+        </div>
+
         <div id="step2and3" style="display:none;">
             <h3>2. API Configuration</h3>
             <p>Specify the API endpoint and the HTTP method to use for the requests. For PUT requests, the tool will automatically detect array fields from a sample record.</p>
@@ -356,6 +362,7 @@
                     <option value="">-- Select a record type --</option>
                     <option value="https://spaces.nexudus.com/api/spaces/bookings">Bookings</option>
                     <option value="https://spaces.nexudus.com/api/spaces/bookingproducts">Booking Products</option>
+                    <option value="https://spaces.nexudus.com/api/billing/businesscharges">Business Charges</option>
                     <option value="https://spaces.nexudus.com/api/billing/contractcontacts">Contract Contact - Virtual Offices</option>
                     <option value="https://spaces.nexudus.com/api/billing/contractdeposits">Contract Deposit</option>
                     <option value="https://spaces.nexudus.com/api/billing/contractproducts">Contract Products</option>
@@ -513,8 +520,8 @@
                 if (response.ok) {
                     isAuthenticated = true;
                     log('Authentication successful! You can now proceed to Step 2.', 'success');
-                    // Step 2 and 3 are now revealed
-                    document.getElementById('step2and3').style.display = 'block'; 
+                    document.getElementById('exportBusinessesSection').style.display = 'block';
+                    document.getElementById('step2and3').style.display = 'block';
                 } else {
                     isAuthenticated = false;
                     log(`Authentication failed. Status: ${response.status}. Please check your credentials.`, 'error');
@@ -900,6 +907,55 @@
             }
 
             return payload;
+        }
+
+        async function exportAllBusinesses() {
+            const btn = document.getElementById('exportBusinessesButton');
+            btn.disabled = true;
+            btn.textContent = 'Fetching...';
+            log('Fetching all businesses...', 'info');
+
+            const allBusinesses = [];
+            let page = 1;
+            const pageSize = 100;
+
+            try {
+                while (true) {
+                    const response = await fetch(`https://spaces.nexudus.com/api/sys/businesses?PageSize=${pageSize}&PageIndex=${page}`, {
+                        method: 'GET',
+                        headers: { 'Authorization': authHeader }
+                    });
+
+                    if (!response.ok) {
+                        const errorText = await response.text();
+                        throw new Error(`Status ${response.status}: ${errorText}`);
+                    }
+
+                    const data = await response.json();
+                    const records = data.Records || data;
+
+                    if (!records || records.length === 0) break;
+
+                    allBusinesses.push(...records);
+                    log(`Fetched page ${page} — ${allBusinesses.length} businesses so far.`, 'info');
+
+                    if (allBusinesses.length >= (data.TotalItems || allBusinesses.length)) break;
+                    if (records.length < pageSize) break;
+                    page++;
+                }
+
+                if (allBusinesses.length === 0) {
+                    log('No businesses found.', 'error');
+                } else {
+                    downloadResults(allBusinesses, 'businesses.csv');
+                    log(`Exported ${allBusinesses.length} businesses to businesses.csv.`, 'success');
+                }
+            } catch (error) {
+                log(`Error fetching businesses: ${error.message}`, 'error');
+            }
+
+            btn.disabled = false;
+            btn.textContent = 'Export All Businesses';
         }
 
         async function getTemplate() {
