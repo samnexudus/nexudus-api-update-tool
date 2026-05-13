@@ -1198,27 +1198,42 @@
                     };
                 }
 
-                try {
-                    log(`Sending request to: ${targetEndpoint}`, 'info');
-                    const response = await fetch(targetEndpoint, fetchOptions);
+                let requestSucceeded = false;
+                let retryDelay = 5000;
+                while (!requestSucceeded && isProcessing) {
+                    try {
+                        log(`Sending request to: ${targetEndpoint}`, 'info');
+                        const response = await fetch(targetEndpoint, fetchOptions);
 
-                    if (response.ok) {
-                        if (httpMethod === 'GET') {
-                            const data = await response.json();
-                            fetchedRecords.push(data);
-                            log(`Success: Details for Record ID ${recordId} fetched.`, 'success');
-                        } else {
-                            log(`Success: Record ID ${recordId || 'new record'} processed successfully with method ${httpMethod}.`, 'success');
+                        if (response.status === 429) {
+                            const retryAfterHeader = response.headers.get('Retry-After');
+                            const waitMs = retryAfterHeader ? parseInt(retryAfterHeader) * 1000 : retryDelay;
+                            log(`Rate limit hit for Record ID ${recordId || 'new record'}. Retrying in ${waitMs / 1000}s...`, 'error');
+                            await new Promise(resolve => setTimeout(resolve, waitMs));
+                            retryDelay = Math.min(retryDelay * 2, 60000);
+                            continue;
                         }
-                    } else {
-                        const errorText = await response.text();
-                        log(`Error: Failed to process Record ID ${recordId || 'new record'} with method ${httpMethod}. Status: ${response.status}. Message: ${errorText}`, 'error');
-                        failedRecords.push({ ...record, ErrorMessage: errorText });
+
+                        if (response.ok) {
+                            if (httpMethod === 'GET') {
+                                const data = await response.json();
+                                fetchedRecords.push(data);
+                                log(`Success: Details for Record ID ${recordId} fetched.`, 'success');
+                            } else {
+                                log(`Success: Record ID ${recordId || 'new record'} processed successfully with method ${httpMethod}.`, 'success');
+                            }
+                        } else {
+                            const errorText = await response.text();
+                            log(`Error: Failed to process Record ID ${recordId || 'new record'} with method ${httpMethod}. Status: ${response.status}. Message: ${errorText}`, 'error');
+                            failedRecords.push({ ...record, ErrorMessage: errorText });
+                        }
+                        requestSucceeded = true;
+                    } catch (error) {
+                        const errorMsg = error.message || 'Network error.';
+                        log(`Error: Failed to send request for Record ID ${recordId || 'new record'}. Message: ${errorMsg}`, 'error');
+                        failedRecords.push({ ...record, ErrorMessage: errorMsg });
+                        requestSucceeded = true;
                     }
-                } catch (error) {
-                    const errorMsg = error.message || 'Network error.';
-                    log(`Error: Failed to send request for Record ID ${recordId || 'new record'}. Message: ${errorMsg}`, 'error');
-                    failedRecords.push({ ...record, ErrorMessage: errorMsg });
                 }
                 
                 processedCount++;
