@@ -939,7 +939,7 @@
                     allBusinesses.push(...records);
                     log(`Fetched page ${page} — ${allBusinesses.length} businesses so far.`, 'info');
 
-                    if (allBusinesses.length >= (data.TotalItems || allBusinesses.length)) break;
+                    if (data.TotalItems && allBusinesses.length >= data.TotalItems) break;
                     if (records.length < pageSize) break;
                     page++;
                 }
