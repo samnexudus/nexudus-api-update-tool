@@ -916,11 +916,11 @@
             log('Fetching all businesses...', 'info');
 
             const allBusinesses = [];
-            let page = 1;
             const pageSize = 100;
+            const maxPages = 1000;
 
             try {
-                while (true) {
+                for (let page = 1; page <= maxPages; page++) {
                     const response = await fetch(`https://spaces.nexudus.com/api/sys/businesses?PageSize=${pageSize}&PageNumber=${page}`, {
                         method: 'GET',
                         headers: { 'Authorization': authHeader }
@@ -939,9 +939,7 @@
                     allBusinesses.push(...records);
                     log(`Fetched page ${page} — ${allBusinesses.length} businesses so far.`, 'info');
 
-                    if (data.TotalItems && allBusinesses.length >= data.TotalItems) break;
                     if (records.length < pageSize) break;
-                    page++;
                 }
 
                 if (allBusinesses.length === 0) {
