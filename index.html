@@ -915,32 +915,23 @@
             btn.textContent = 'Fetching...';
             log('Fetching all businesses...', 'info');
 
-            const allBusinesses = [];
-            const pageSize = 100;
-            const maxPages = 1000;
+            let allBusinesses = [];
+            const pageSize = 10000;
 
             try {
-                for (let page = 1; page <= maxPages; page++) {
-                    const response = await fetch(`https://spaces.nexudus.com/api/sys/businesses?PageSize=${pageSize}&PageNumber=${page}`, {
-                        method: 'GET',
-                        headers: { 'Authorization': authHeader }
-                    });
+                const response = await fetch(`https://spaces.nexudus.com/api/sys/businesses?PageSize=${pageSize}&PageNumber=1`, {
+                    method: 'GET',
+                    headers: { 'Authorization': authHeader }
+                });
 
-                    if (!response.ok) {
-                        const errorText = await response.text();
-                        throw new Error(`Status ${response.status}: ${errorText}`);
-                    }
-
-                    const data = await response.json();
-                    const records = data.Records || data;
-
-                    if (!records || records.length === 0) break;
-
-                    allBusinesses.push(...records);
-                    log(`Fetched page ${page} — ${allBusinesses.length} businesses so far.`, 'info');
-
-                    if (records.length < pageSize) break;
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    throw new Error(`Status ${response.status}: ${errorText}`);
                 }
+
+                const data = await response.json();
+                allBusinesses = data.Records || data;
+                log(`Fetched ${allBusinesses.length} businesses.`, 'info');
 
                 if (allBusinesses.length === 0) {
                     log('No businesses found.', 'error');
