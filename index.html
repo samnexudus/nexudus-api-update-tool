@@ -916,22 +916,29 @@
             log('Fetching all businesses...', 'info');
 
             let allBusinesses = [];
-            const pageSize = 10000;
+            const size = 100;
+            let page = 1;
 
             try {
-                const response = await fetch(`https://spaces.nexudus.com/api/sys/businesses?PageSize=${pageSize}&PageNumber=1`, {
-                    method: 'GET',
-                    headers: { 'Authorization': authHeader }
-                });
+                while (true) {
+                    const response = await fetch(`https://spaces.nexudus.com/api/sys/businesses?page=${page}&size=${size}`, {
+                        method: 'GET',
+                        headers: { 'Authorization': authHeader }
+                    });
 
-                if (!response.ok) {
-                    const errorText = await response.text();
-                    throw new Error(`Status ${response.status}: ${errorText}`);
+                    if (!response.ok) {
+                        const errorText = await response.text();
+                        throw new Error(`Status ${response.status}: ${errorText}`);
+                    }
+
+                    const data = await response.json();
+                    const records = data.Records || [];
+                    allBusinesses.push(...records);
+                    log(`Fetched page ${page} — ${allBusinesses.length} of ${data.TotalItems ?? '?'} businesses so far.`, 'info');
+
+                    if (!data.HasNextPage) break;
+                    page++;
                 }
-
-                const data = await response.json();
-                allBusinesses = data.Records || data;
-                log(`Fetched ${allBusinesses.length} businesses.`, 'info');
 
                 if (allBusinesses.length === 0) {
                     log('No businesses found.', 'error');
