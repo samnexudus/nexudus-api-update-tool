@@ -295,6 +295,7 @@
                         <li><strong>Dates</strong> should be formatted in UTC as <code>yyyy-mm-dd hh:mm</code>. The tool will handle the conversion to the correct API format.</li>
                         <li>To <strong>clear an existing value</strong> (set it to <code>null</code>), use the text **<code>[NULL]</code>** in the corresponding CSV cell.</li>
                         <li>To update a <strong>Custom Field</strong>, use <code>CustomField_ID</code> as the CSV header (e.g., <code>CustomField_1414354510</code>).</li>
+                        <li><strong>Coworker teams:</strong> A customer can belong to only one team that has "create a single invoice for the whole team" enabled. When you change a Coworker's <code>Teams</code>, the tool automatically sends two updates — first removing the team(s) they are leaving, then applying the new list — so this rule is never violated.</li>
                     </ul>
                 </li>
             </ol>
@@ -1143,6 +1144,56 @@
             reader.readAsText(csvFile);
         }
 
+        // A customer can belong to at most ONE team that has "Create a single invoice for the whole team"
+        // enabled. The API adds all new teams before it removes the old ones, so moving a customer between
+        // two such teams in a single PUT temporarily puts them in two and the server rejects it (HTTP 400).
+        // To work around this we split the update into two safe steps: first drop the teams they are leaving,
+        // then apply the full new list.
+        function isCoworkerEndpoint(endpoint) {
+            return typeof endpoint === 'string' && endpoint.replace(/\/+$/, '').endsWith('/api/spaces/coworkers');
+        }
+
+        function getEffectiveTeamIds(record, existingRecord) {
+            const raw = record['Teams'];
+            if (raw !== null && raw !== undefined && raw !== '') {
+                return String(raw).split(';').map(s => s.trim()).filter(Boolean);
+            }
+            const added = record['AddedTeams'];
+            const removed = record['RemovedTeams'];
+            if ((added !== null && added !== undefined && added !== '') ||
+                (removed !== null && removed !== undefined && removed !== '')) {
+                const current = Array.isArray(existingRecord?.Teams) ? [...existingRecord.Teams] : [];
+                const addIds = added ? String(added).split(';').map(s => s.trim()).filter(Boolean) : [];
+                const removeIds = removed ? String(removed).split(';').map(s => s.trim()).filter(Boolean) : [];
+                return [...current.filter(id => !removeIds.includes(String(id))), ...addIds];
+            }
+            return null; // No team change requested
+        }
+
+        function buildCoworkerTeamUpdateRequests(apiEndpoint, recordId, payload, existingRecord, record) {
+            const newTeams = getEffectiveTeamIds(record, existingRecord);
+            if (newTeams === null) {
+                return [{ method: 'PUT', headers: { 'Content-Type': 'application/json', 'Authorization': authHeader }, body: JSON.stringify(payload) }];
+            }
+
+            const oldTeams = Array.isArray(existingRecord?.Teams) ? existingRecord.Teams.map(String) : [];
+            const changed = newTeams.length !== oldTeams.length ||
+                newTeams.some(t => !oldTeams.includes(String(t)));
+            if (!changed) {
+                return [{ method: 'PUT', headers: { 'Content-Type': 'application/json', 'Authorization': authHeader }, body: JSON.stringify(payload) }];
+            }
+
+            const headers = { 'Content-Type': 'application/json', 'Authorization': authHeader };
+            const intersection = oldTeams.filter(id => newTeams.includes(id));
+            const step1 = { ...payload, Teams: intersection };   // Drop the teams being removed; adds nothing new.
+            const step2 = { ...payload, Teams: newTeams };        // Apply the final team list.
+            log(`Team change detected for Coworker ${recordId}. Sending two updates: first remove leaving team(s) [${intersection.join(', ') || 'none'}], then set final team(s) [${newTeams.join(', ')}].`, 'info');
+            return [
+                { method: 'PUT', headers, body: JSON.stringify(step1) },
+                { method: 'PUT', headers, body: JSON.stringify(step2) }
+            ];
+        }
+
         async function processRecords(recordsToProcess) {
             const apiEndpoint = document.getElementById('recordType').value === 'custom' ? document.getElementById('apiEndpoint').value : document.getElementById('recordType').value;
             const httpMethod = document.getElementById('httpMethod').value;
@@ -1165,10 +1216,12 @@
                 let targetEndpoint = apiEndpoint;
                 let finalHttpMethod = httpMethod;
                 let fetchOptions = {};
+                let requestsToSend = [];
                 
                 if (httpMethod === 'GET') {
                     targetEndpoint = `${apiEndpoint}/${recordId}`;
                     fetchOptions = { method: finalHttpMethod, headers: { 'Authorization': authHeader } };
+                    requestsToSend = [fetchOptions];
                 } 
                 else if (httpMethod === 'DELETE') {
                     if (apiEndpoint.endsWith('/api/spaces/coworkers')) {
@@ -1188,6 +1241,7 @@
                         targetEndpoint = `${apiEndpoint}/${recordId}`;
                         fetchOptions = { method: finalHttpMethod, headers: { 'Authorization': authHeader } };
                     }
+                    requestsToSend = [fetchOptions];
                 } 
                 else if (httpMethod === 'PUT' || httpMethod === 'POST') {
                     if (!record['LocationId']) {
@@ -1227,9 +1281,10 @@
                     };
 
                     let payload = {};
+                    let existingRecord = null;
                     if (httpMethod === 'PUT') {
                         log(`Fetching existing record for ID ${recordId}...`, 'info');
-                        const existingRecord = await getRecordData(apiEndpoint, recordId); 
+                        existingRecord = await getRecordData(apiEndpoint, recordId); 
                         if (!existingRecord) {
                             const errorMsg = `Could not fetch existing record for ID ${recordId}.`;
                             log(`Error: ${errorMsg}`, 'error');
@@ -1243,19 +1298,26 @@
                         payload = createPayload(record, httpMethod, convertLocalToUtc);
                     }
                     
-                    fetchOptions = {
-                        method: finalHttpMethod,
-                        headers: { 'Content-Type': 'application/json', 'Authorization': authHeader },
-                        body: JSON.stringify(payload)
-                    };
+                    // For coworker team changes, split into two safe updates (see buildCoworkerTeamUpdateRequests).
+                    requestsToSend = [
+                        { method: finalHttpMethod, headers: { 'Content-Type': 'application/json', 'Authorization': authHeader }, body: JSON.stringify(payload) }
+                    ];
+                    if (httpMethod === 'PUT' && isCoworkerEndpoint(apiEndpoint)) {
+                        requestsToSend = buildCoworkerTeamUpdateRequests(apiEndpoint, recordId, payload, existingRecord, record);
+                    }
+
+                    fetchOptions = requestsToSend[0];
                 }
 
-                let requestSucceeded = false;
-                let retryDelay = 5000;
-                while (!requestSucceeded && isProcessing) {
-                    try {
-                        log(`Sending request to: ${targetEndpoint}`, 'info');
-                        const response = await fetch(targetEndpoint, fetchOptions);
+                let allRequestsSucceeded = true;
+                for (let reqIndex = 0; reqIndex < requestsToSend.length && allRequestsSucceeded && isProcessing; reqIndex++) {
+                    fetchOptions = requestsToSend[reqIndex];
+                    let requestSucceeded = false;
+                    let retryDelay = 5000;
+                    while (!requestSucceeded && isProcessing) {
+                        try {
+                            log(requestsToSend.length > 1 ? `Sending request ${reqIndex + 1} of ${requestsToSend.length} to: ${targetEndpoint}` : `Sending request to: ${targetEndpoint}`, 'info');
+                            const response = await fetch(targetEndpoint, fetchOptions);
 
                         if (response.status === 429) {
                             const retryAfterHeader = response.headers.get('Retry-After');
@@ -1272,20 +1334,27 @@
                                 fetchedRecords.push(data);
                                 log(`Success: Details for Record ID ${recordId} fetched.`, 'success');
                             } else {
-                                log(`Success: Record ID ${recordId || 'new record'} processed successfully with method ${httpMethod}.`, 'success');
+                                if (requestsToSend.length > 1 && reqIndex < requestsToSend.length - 1) {
+                                    log(`Step ${reqIndex + 1} of ${requestsToSend.length} succeeded for Record ID ${recordId || 'new record'}.`, 'success');
+                                } else {
+                                    log(`Success: Record ID ${recordId || 'new record'} processed successfully with method ${httpMethod}.`, 'success');
+                                }
                             }
                         } else {
                             const errorText = await response.text();
                             log(`Error: Failed to process Record ID ${recordId || 'new record'} with method ${httpMethod}. Status: ${response.status}. Message: ${errorText}`, 'error');
                             failedRecords.push({ ...record, ErrorMessage: errorText });
+                            allRequestsSucceeded = false;
                         }
                         requestSucceeded = true;
                     } catch (error) {
                         const errorMsg = error.message || 'Network error.';
                         log(`Error: Failed to send request for Record ID ${recordId || 'new record'}. Message: ${errorMsg}`, 'error');
                         failedRecords.push({ ...record, ErrorMessage: errorMsg });
+                        allRequestsSucceeded = false;
                         requestSucceeded = true;
                     }
+                }
                 }
                 
                 processedCount++;
